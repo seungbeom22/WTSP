@@ -342,9 +342,16 @@
       if(isTubesDone(tubes, capacity)) continue;
       if(isSolvable(tubes, capacity, maxStates)) return { tubes, capacity };
     }
-    // 극히 드문 경우, 빈 병을 더 넉넉히 둔 배치로 안전하게 반환
-    const tubes = randomTubes(capacity, emptyTubes + 2);
-    return { tubes, capacity };
+    // 400번 안에 못 찾으면 빈 병을 하나씩 늘려가며 반드시 풀리는 배치를 찾을 때까지 재시도
+    let extraEmpty = emptyTubes + 1;
+    while(true){
+      for(let attempt=0; attempt<400; attempt++){
+        const tubes = randomTubes(capacity, extraEmpty);
+        if(isTubesDone(tubes, capacity)) continue;
+        if(isSolvable(tubes, capacity, maxStates)) return { tubes, capacity };
+      }
+      extraEmpty++;
+    }
   }
 
   function newLevel(level){
