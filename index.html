@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>워터 소트 퍼즐</title>
+<style>
+  :root{
+    --bg:#0f1620;
+    --bg2:#141d29;
+    --glass:#1c2733;
+    --glass-edge:#33455a;
+    --accent:#5ec8d8;
+    --text:#e8eef2;
+    --sub:#8fa3b3;
+    --danger:#e6616a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:radial-gradient(circle at top, var(--bg2), var(--bg));
+    font-family:'Segoe UI', 'Malgun Gothic', sans-serif;
+    color:var(--text);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:20px 12px 60px;
+  }
+  h1{
+    font-size:22px;
+    letter-spacing:2px;
+    margin:8px 0 2px;
+    color:var(--accent);
+  }
+  .sub{
+    color:var(--sub);
+    font-size:13px;
+    margin-bottom:16px;
+  }
+  .hud{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin-bottom:20px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .badge{
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:10px;
+    padding:8px 14px;
+    font-size:14px;
+    display:flex;
+    gap:6px;
+    align-items:center;
+  }
+  .badge b{ color:var(--accent); }
+  button{
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    color:var(--text);
+    padding:9px 16px;
+    border-radius:10px;
+    font-size:14px;
+    cursor:pointer;
+    transition:transform .1s, background .15s;
+  }
+  button:hover{ background:#26333f; }
+  button:active{ transform:scale(0.95); }
+  button:disabled{ opacity:0.4; cursor:default; }
+  #board{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:22px;
+    max-width:820px;
+  }
+  .tube{
+    width:64px;
+    height:200px;
+    border:3px solid var(--glass-edge);
+    border-top:none;
+    border-radius:0 0 18px 18px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+    position:relative;
+    display:flex;
+    flex-direction:column-reverse;
+    padding:4px;
+    cursor:pointer;
+    transition:transform .15s;
+  }
+  .tube::before{
+    content:'';
+    position:absolute;
+    top:-3px; left:-3px; right:-3px;
+    height:10px;
+    border:3px solid var(--glass-edge);
+    border-bottom:none;
+    border-radius:6px 6px 0 0;
+  }
+  .tube.selected{
+    transform:translateY(-14px);
+    border-color:var(--accent);
+    box-shadow:0 0 14px rgba(94,200,216,0.5);
+  }
+  .tube.hint{
+    box-shadow:0 0 14px 4px rgba(255,210,90,0.6);
+  }
+  .tube.shake{
+    animation:shake .3s;
+  }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-6px); }
+    75%{ transform:translateX(6px); }
+  }
+  .liquid{
+    width:100%;
+    height:23%;
+    border-radius:3px;
+    margin-top:2px;
+    flex-shrink:0;
+  }
+  #winModal, #overModal{
+    position:fixed; inset:0;
+    background:rgba(6,10,15,0.75);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+  }
+  .modal-box{
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:16px;
+    padding:28px 32px;
+    text-align:center;
+    max-width:300px;
+  }
+  .modal-box h2{ margin-top:0; color:var(--accent); }
+  .modal-box p{ color:var(--sub); font-size:14px; }
+  .modal-box button{ margin-top:10px; }
+  footer{
+    margin-top:30px;
+    font-size:12px;
+    color:var(--sub);
+  }
+</style>
+</head>
+<body>
+
+<h1>💧 워터 소트 퍼즐</h1>
+<div class="sub">같은 색을 모아 병을 채워보세요</div>
+
+<div class="hud">
+  <div class="badge">레벨 <b id="levelLabel">1</b></div>
+  <div class="badge">이동 <b id="moveLabel">0</b></div>
+  <div class="badge">힌트 <b id="hintLabel">2</b></div>
+  <button id="hintBtn">💡 힌트</button>
+  <button id="undoBtn">↩ 되돌리기</button>
+  <button id="restartBtn">🔄 다시 섞기</button>
+</div>
+
+<div id="board"></div>
+
+<footer>모든 병이 한 가지 색으로 채워지면 클리어! 클리어할수록 어려워집니다.</footer>
+
+<div id="winModal">
+  <div class="modal-box">
+    <h2>🎉 클리어!</h2>
+    <p id="winText">레벨을 완료했습니다.</p>
+    <button id="nextLevelBtn">다음 레벨</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'watersort_progress_v1';
+  const PALETTE = ['#e63946','#f4a261','#f2d144','#2a9d8f','#3a6ea5','#9b5de5']; // 6가지 색
+
+  let state = {
+    level: 1,
+    capacity: 4,
+    tubes: [],
+    selected: -1,
+    moves: 0,
+    hintsLeft: 2,
+    history: []
+  };
+
+  function loadProgress(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const p = JSON.parse(raw);
+        state.level = p.level || 1;
+      }
+    }catch(e){}
+  }
+  function saveProgress(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({level: state.level}));
+    }catch(e){}
+  }
+
+  // 병 개수는 색깔 6개 + 빈 병 1개로 고정하고, 레벨이 오를수록
+  // 병의 용량(층 수)을 늘려서 실질적으로 더 어렵게 만든다.
+  function levelConfig(level){
+    const emptyTubes = 1;
+    let capacity = 4;
+    if(level >= 7) capacity = 6;
+    else if(level >= 4) capacity = 5;
+    const maxStatesByCapacity = { 4: 20000, 5: 30000, 6: 45000 };
+    return { emptyTubes, capacity, maxStates: maxStatesByCapacity[capacity] };
+  }
+
+  function cloneTubes(tubes){
+    return tubes.map(t => t.slice());
+  }
+
+  function topColor(tube){
+    return tube.length ? tube[tube.length-1] : null;
+  }
+
+  function canPour(src, dst){
+    if(src === dst) return false;
+    const s = state.tubes[src], d = state.tubes[dst];
+    if(s.length === 0) return false;
+    if(d.length >= state.capacity) return false;
+    const sc = topColor(s);
+    const dc = topColor(d);
+    if(dc !== null && dc !== sc) return false;
+    return true;
+  }
+
+  function pourAmount(src, dst){
+    const s = state.tubes[src], d = state.tubes[dst];
+    const sc = topColor(s);
+    let count = 0;
+    for(let i = s.length-1; i>=0; i--){
+      if(s[i] === sc) count++; else break;
+    }
+    const space = state.capacity - d.length;
+    return Math.min(count, space);
+  }
+
+  function doPour(src, dst, recordHistory){
+    const amt = pourAmount(src, dst);
+    if(amt <= 0) return false;
+    if(recordHistory){
+      state.history.push(cloneTubes(state.tubes));
+      if(state.history.length > 200) state.history.shift();
+    }
+    const sc = topColor(state.tubes[src]);
+    for(let i=0;i<amt;i++){
+      state.tubes[src].pop();
+      state.tubes[dst].push(sc);
+    }
+    return true;
+  }
+
+  function isSolved(){
+    const cap = state.capacity;
+    return state.tubes.every(t => t.length === 0 || (t.length === cap && t.every(c => c === t[0])));
+  }
+
+  function tubeStateKey(tubes){
+    return tubes.map(t => t.join(',')).join('|');
+  }
+
+  function isTubesDone(tubes, cap){
+    return tubes.every(t => t.length===0 || (t.length===cap && t.every(c=>c===t[0])));
+  }
+
+  // 주어진 배치가 실제로 풀 수 있는지 BFS로 검증 (탐색 상한을 둬서 무거워지지 않게 함)
+  function isSolvable(tubes, cap, maxStates){
+    if(isTubesDone(tubes, cap)) return true;
+    const visited = new Set([tubeStateKey(tubes)]);
+    let frontier = [tubes];
+    let explored = 0;
+    while(frontier.length && explored < maxStates){
+      const next = [];
+      for(const cur of frontier){
+        const n = cur.length;
+        for(let i=0;i<n;i++){
+          if(cur[i].length===0) continue;
+          for(let j=0;j<n;j++){
+            if(i===j) continue;
+            const s = cur[i], d = cur[j];
+            if(d.length >= cap) continue;
+            const sc = s[s.length-1];
+            const dc = d.length ? d[d.length-1] : null;
+            if(dc !== null && dc !== sc) continue;
+            // 꽉 찬 단색 병을 빈 병으로 그대로 옮기는 무의미한 수는 건너뛴다
+            if(dc === null && d.length === 0 && s.every(c => c === sc)) continue;
+            let count = 0;
+            for(let k=s.length-1;k>=0;k--){ if(s[k]===sc) count++; else break; }
+            const amt = Math.min(count, cap-d.length);
+            if(amt<=0) continue;
+            const ns = cur.map(t => t.slice());
+            for(let k=0;k<amt;k++){ ns[j].push(ns[i].pop()); }
+            if(isTubesDone(ns, cap)) return true;
+            const key = tubeStateKey(ns);
+            if(visited.has(key)) continue;
+            visited.add(key);
+            next.push(ns);
+            explored++;
+            if(explored >= maxStates) break;
+          }
+          if(explored >= maxStates) break;
+        }
+        if(explored >= maxStates) break;
+      }
+      frontier = next;
+    }
+    return false;
+  }
+
+  function randomTubes(cap, emptyTubes){
+    const colors = PALETTE.slice(0, 6);
+    let units = [];
+    colors.forEach(c => { for(let i=0;i<cap;i++) units.push(c); });
+    for(let i=units.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [units[i], units[j]] = [units[j], units[i]];
+    }
+    let tubes = [];
+    for(let i=0;i<colors.length;i++){
+      tubes.push(units.slice(i*cap, i*cap+cap));
+    }
+    for(let i=0;i<emptyTubes;i++) tubes.push([]);
+    return tubes;
+  }
+
+  function generatePuzzle(level){
+    const { emptyTubes, capacity, maxStates } = levelConfig(level);
+
+    for(let attempt=0; attempt<400; attempt++){
+      const tubes = randomTubes(capacity, emptyTubes);
+      if(isTubesDone(tubes, capacity)) continue;
+      if(isSolvable(tubes, capacity, maxStates)) return { tubes, capacity };
+    }
+    // 극히 드문 경우, 빈 병을 더 넉넉히 둔 배치로 안전하게 반환
+    const tubes = randomTubes(capacity, emptyTubes + 2);
+    return { tubes, capacity };
+  }
+
+  function newLevel(level){
+    const { tubes, capacity } = generatePuzzle(level);
+    state.level = level;
+    state.capacity = capacity;
+    state.tubes = tubes;
+    state.selected = -1;
+    state.moves = 0;
+    state.hintsLeft = 2;
+    state.history = [];
+    saveProgress();
+    render();
+  }
+
+  function findHint(){
+    const n = state.tubes.length;
+    // 완성 가능한 이동 우선
+    let best = null;
+    for(let i=0;i<n;i++){
+      for(let j=0;j<n;j++){
+        if(i===j) continue;
+        if(canPour(i,j)){
+          const amt = pourAmount(i,j);
+          const dst = state.tubes[j];
+          const willComplete = (dst.length+amt===state.capacity) && (state.tubes[i].length-amt===0 || topColor(state.tubes[i])!==null);
+          const score = willComplete ? 100+amt : amt;
+          if(!best || score > best.score) best = {src:i,dst:j,score};
+        }
+      }
+    }
+    return best;
+  }
+
+  function render(){
+    document.getElementById('levelLabel').textContent = state.level;
+    document.getElementById('moveLabel').textContent = state.moves;
+    document.getElementById('hintLabel').textContent = state.hintsLeft;
+    document.getElementById('undoBtn').disabled = state.history.length === 0;
+    document.getElementById('hintBtn').disabled = state.hintsLeft <= 0;
+
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+    const segH = (100 / state.capacity).toFixed(2) + '%';
+    state.tubes.forEach((tube, idx) => {
+      const div = document.createElement('div');
+      div.className = 'tube' + (state.selected===idx ? ' selected' : '');
+      div.dataset.idx = idx;
+      tube.forEach(color => {
+        const liq = document.createElement('div');
+        liq.className = 'liquid';
+        liq.style.background = color;
+        liq.style.height = segH;
+        div.appendChild(liq);
+      });
+      div.addEventListener('click', () => onTubeClick(idx));
+      board.appendChild(div);
+    });
+  }
+
+  function onTubeClick(idx){
+    if(state.selected === -1){
+      if(state.tubes[idx].length === 0) return;
+      state.selected = idx;
+      render();
+      return;
+    }
+    if(state.selected === idx){
+      state.selected = -1;
+      render();
+      return;
+    }
+    if(canPour(state.selected, idx)){
+      doPour(state.selected, idx, true);
+      state.moves++;
+      state.selected = -1;
+      render();
+      if(isSolved()) onWin();
+    } else {
+      const el = document.querySelector('.tube[data-idx="'+idx+'"]');
+      if(el){
+        el.classList.add('shake');
+        setTimeout(()=>el.classList.remove('shake'), 300);
+      }
+      state.selected = -1;
+      render();
+    }
+  }
+
+  function onWin(){
+    document.getElementById('winText').textContent =
+      '레벨 ' + state.level + ' 클리어! (이동 ' + state.moves + '회)';
+    document.getElementById('winModal').style.display = 'flex';
+  }
+
+  document.getElementById('nextLevelBtn').addEventListener('click', () => {
+    document.getElementById('winModal').style.display = 'none';
+    newLevel(state.level + 1);
+  });
+
+  document.getElementById('hintBtn').addEventListener('click', () => {
+    if(state.hintsLeft <= 0) return;
+    const h = findHint();
+    if(!h) return;
+    state.hintsLeft--;
+    render();
+    document.querySelectorAll('.tube').forEach(el => {
+      const i = Number(el.dataset.idx);
+      if(i===h.src || i===h.dst) el.classList.add('hint');
+    });
+    setTimeout(() => {
+      document.querySelectorAll('.tube.hint').forEach(el=>el.classList.remove('hint'));
+    }, 1200);
+  });
+
+  document.getElementById('undoBtn').addEventListener('click', () => {
+    if(state.history.length === 0) return;
+    state.tubes = state.history.pop();
+    state.selected = -1;
+    state.moves = Math.max(0, state.moves-1);
+    render();
+  });
+
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    newLevel(state.level);
+  });
+
+  loadProgress();
+  newLevel(state.level);
+})();
+</script>
+
+</body>
+</html>
