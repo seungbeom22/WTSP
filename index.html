@@ -25,18 +25,13 @@
     display:flex;
     flex-direction:column;
     align-items:center;
-    padding:20px 12px 60px;
+    padding:10px 12px 60px;
   }
   h1{
     font-size:22px;
     letter-spacing:2px;
-    margin:8px 0 2px;
+    margin:0 0 16px;
     color:var(--accent);
-  }
-  .sub{
-    color:var(--sub);
-    font-size:13px;
-    margin-bottom:16px;
   }
   .hud{
     display:flex;
@@ -88,6 +83,7 @@
     display:flex;
     flex-direction:column-reverse;
     padding:4px;
+    overflow:hidden;
     cursor:pointer;
     transition:transform .15s;
   }
@@ -105,9 +101,6 @@
     border-color:var(--accent);
     box-shadow:0 0 14px rgba(94,200,216,0.5);
   }
-  .tube.hint{
-    box-shadow:0 0 14px 4px rgba(255,210,90,0.6);
-  }
   .tube.shake{
     animation:shake .3s;
   }
@@ -120,7 +113,6 @@
     width:100%;
     height:23%;
     border-radius:3px;
-    margin-top:2px;
     flex-shrink:0;
   }
   #winModal, #overModal{
@@ -142,36 +134,26 @@
   .modal-box h2{ margin-top:0; color:var(--accent); }
   .modal-box p{ color:var(--sub); font-size:14px; }
   .modal-box button{ margin-top:10px; }
-  footer{
-    margin-top:30px;
-    font-size:12px;
-    color:var(--sub);
-  }
 </style>
 </head>
 <body>
 
 <h1>💧 워터 소트 퍼즐</h1>
-<div class="sub">같은 색을 모아 병을 채워보세요</div>
 
 <div class="hud">
-  <div class="badge">레벨 <b id="levelLabel">1</b></div>
+  <div class="badge">클리어 <b id="levelLabel">1</b></div>
   <div class="badge">이동 <b id="moveLabel">0</b></div>
-  <div class="badge">힌트 <b id="hintLabel">2</b></div>
-  <button id="hintBtn">💡 힌트</button>
   <button id="undoBtn">↩ 되돌리기</button>
   <button id="restartBtn">🔄 다시 섞기</button>
 </div>
 
 <div id="board"></div>
 
-<footer>모든 병이 한 가지 색으로 채워지면 클리어! 클리어할수록 어려워집니다.</footer>
-
 <div id="winModal">
   <div class="modal-box">
     <h2>🎉 클리어!</h2>
-    <p id="winText">레벨을 완료했습니다.</p>
-    <button id="nextLevelBtn">다음 레벨</button>
+    <p id="winText">클리어했습니다.</p>
+    <button id="nextLevelBtn">다음 판</button>
   </div>
 </div>
 
@@ -186,7 +168,6 @@
     tubes: [],
     selected: -1,
     moves: 0,
-    hintsLeft: 2,
     history: []
   };
 
@@ -205,15 +186,13 @@
     }catch(e){}
   }
 
-  // 병 개수는 색깔 6개 + 빈 병 1개로 고정하고, 레벨이 오를수록
-  // 병의 용량(층 수)을 늘려서 실질적으로 더 어렵게 만든다.
+  // 병 개수(색깔 6개 + 빈 병 1개)와 병의 용량(6칸)을 항상 동일하게 고정한다.
+  // 클리어 횟수가 늘어도 조건은 절대 바뀌지 않는다.
   function levelConfig(level){
     const emptyTubes = 1;
-    let capacity = 4;
-    if(level >= 7) capacity = 6;
-    else if(level >= 4) capacity = 5;
-    const maxStatesByCapacity = { 4: 20000, 5: 30000, 6: 45000 };
-    return { emptyTubes, capacity, maxStates: maxStatesByCapacity[capacity] };
+    const capacity = 6;
+    const maxStates = 45000;
+    return { emptyTubes, capacity, maxStates };
   }
 
   function cloneTubes(tubes){
@@ -361,37 +340,15 @@
     state.tubes = tubes;
     state.selected = -1;
     state.moves = 0;
-    state.hintsLeft = 2;
     state.history = [];
     saveProgress();
     render();
   }
 
-  function findHint(){
-    const n = state.tubes.length;
-    // 완성 가능한 이동 우선
-    let best = null;
-    for(let i=0;i<n;i++){
-      for(let j=0;j<n;j++){
-        if(i===j) continue;
-        if(canPour(i,j)){
-          const amt = pourAmount(i,j);
-          const dst = state.tubes[j];
-          const willComplete = (dst.length+amt===state.capacity) && (state.tubes[i].length-amt===0 || topColor(state.tubes[i])!==null);
-          const score = willComplete ? 100+amt : amt;
-          if(!best || score > best.score) best = {src:i,dst:j,score};
-        }
-      }
-    }
-    return best;
-  }
-
   function render(){
     document.getElementById('levelLabel').textContent = state.level;
     document.getElementById('moveLabel').textContent = state.moves;
-    document.getElementById('hintLabel').textContent = state.hintsLeft;
     document.getElementById('undoBtn').disabled = state.history.length === 0;
-    document.getElementById('hintBtn').disabled = state.hintsLeft <= 0;
 
     const board = document.getElementById('board');
     board.innerHTML = '';
@@ -443,28 +400,13 @@
 
   function onWin(){
     document.getElementById('winText').textContent =
-      '레벨 ' + state.level + ' 클리어! (이동 ' + state.moves + '회)';
+      state.level + '번째 클리어! (이동 ' + state.moves + '회)';
     document.getElementById('winModal').style.display = 'flex';
   }
 
   document.getElementById('nextLevelBtn').addEventListener('click', () => {
     document.getElementById('winModal').style.display = 'none';
     newLevel(state.level + 1);
-  });
-
-  document.getElementById('hintBtn').addEventListener('click', () => {
-    if(state.hintsLeft <= 0) return;
-    const h = findHint();
-    if(!h) return;
-    state.hintsLeft--;
-    render();
-    document.querySelectorAll('.tube').forEach(el => {
-      const i = Number(el.dataset.idx);
-      if(i===h.src || i===h.dst) el.classList.add('hint');
-    });
-    setTimeout(() => {
-      document.querySelectorAll('.tube.hint').forEach(el=>el.classList.remove('hint'));
-    }, 1200);
   });
 
   document.getElementById('undoBtn').addEventListener('click', () => {
