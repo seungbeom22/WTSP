@@ -1,431 +1,528 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>로또 생성기 v2.0</title>
-    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        :root { --primary: #ff9500; --bg: #f0f2f7; --card: #ffffff; --text: #1a1a2e; --history-bg: #e8ecf5; }
-        [data-theme="dark"] { --primary: #ff9500; --bg: #0f0f1a; --card: #1c1c2e; --text: #f0f0f0; --history-bg: #14142a; }
-        [data-theme="blue"] { --primary: #3b82f6; --bg: #eff6ff; --card: #ffffff; --text: #1e3a5f; --history-bg: #dbeafe; }
-        [data-theme="green"] { --primary: #22c55e; --bg: #f0fdf4; --card: #ffffff; --text: #14532d; --history-bg: #dcfce7; }
-        [data-theme="pink"] { --primary: #ec4899; --bg: #fdf2f8; --card: #ffffff; --text: #831843; --history-bg: #fce7f3; }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Noto Sans KR', sans-serif; background-color: var(--bg); color: var(--text); min-height: 100dvh; transition: background 0.3s; }
-
-        #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
-        #overlay.active { display: block; }
-        #side-menu { position: fixed; top: 0; left: 0; height: 100%; width: 280px; background: #1a1a2e; z-index: 100; transform: translateX(-100%); transition: transform 0.35s; display: flex; flex-direction: column; }
-        #side-menu.open { transform: translateX(0); }
-
-        .menu-header { background: linear-gradient(135deg, var(--primary), #ff6b35); padding: 50px 24px 24px; position: relative; }
-        .menu-header h2 { font-family: 'Noto Sans KR', sans-serif; font-weight: 700; color: white; font-size: 22px; }
-        .closebtn { position: absolute; top: 14px; right: 18px; font-size: 26px; color: white; cursor: pointer; background: none; border: none; }
-        .menu-body { padding: 24px; flex: 1; overflow-y: auto; }
-        .menu-section-title { font-size: 11px; font-weight: 700; color: #6b7280; margin-bottom: 12px; }
-        .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 28px; }
-        .theme-btn { padding: 10px 8px; border: 2px solid transparent; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: white; background: #333; }
-        .theme-btn.active { border-color: white; outline: 2px solid var(--primary); }
-        .dev-note { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; color: #d1d5db; font-size: 13px; }
-        .dev-title { color: var(--primary); font-weight: 700; margin-bottom: 6px; }
-
-        .app-wrapper { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; min-height: 100dvh; }
-        .app-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 16px; }
-        .hamburger { width: 40px; height: 40px; background: var(--card); border-radius: 12px; border: none; cursor: pointer; color: var(--text); }
-        .app-title { font-size: 24px; font-weight: 700; color: #1a1a2e; letter-spacing: 0; font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
-        .app-title span { color: var(--primary); }
-
-        .btn-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 0 16px 20px; }
-        .btn-row button { padding: 12px; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 13px; }
-        .btn-gen { background: var(--primary); color: white; }
-        .btn-save { background: #4caf50; color: white; }
-        .btn-clear { background: #ff3b30; color: white; }
-
-        .main-card { background: var(--card); margin: 0 16px; border-radius: 24px; padding: 24px 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        .number-card { background: #1a1a2e; border-radius: 18px; padding: 20px 16px; margin-top: 20px; min-height: 90px; display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: nowrap; }
-        .ball { width: 34px; height: 34px; min-width: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 13px; opacity: 0; transform: scale(0.5); transition: all 0.5s ease-out; flex-shrink: 0; }
-        .ball.show { opacity: 1; transform: scale(1); }
-        
-        .history-section { background: var(--history-bg); flex: 1; margin-top: 16px; padding: 20px 16px 30px; border-radius: 24px 24px 0 0; }
-        .history-item { background: var(--card); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; color: var(--text); }
-        .btn-delete { background: #ff3b30; color: white; border: none; border-radius: 8px; padding: 5px 10px; cursor: pointer; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>워터 소트 퍼즐</title>
+<style>
+  :root{
+    --bg:#0f1620;
+    --bg2:#141d29;
+    --glass:#1c2733;
+    --glass-edge:#33455a;
+    --accent:#5ec8d8;
+    --text:#e8eef2;
+    --sub:#8fa3b3;
+    --danger:#e6616a;
+  }
+  *{box-sizing:border-box;}
+  html, body{
+    overflow:hidden;
+    height:100%;
+    overscroll-behavior:none;
+    touch-action:none;
+  }
+  body{
+    margin:0;
+    min-height:100vh;
+    background:radial-gradient(circle at top, var(--bg2), var(--bg));
+    font-family:'Segoe UI', 'Malgun Gothic', sans-serif;
+    color:var(--text);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:10px 12px 60px;
+  }
+  h1{
+    font-size:22px;
+    letter-spacing:2px;
+    margin:0 0 16px;
+    color:var(--accent);
+  }
+  .hud{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin-bottom:20px;
+    flex-wrap:nowrap;
+    justify-content:center;
+  }
+  .icon-btn{
+    width:40px;
+    height:40px;
+    padding:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+    flex-shrink:0;
+  }
+  .badge{
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:10px;
+    padding:8px 14px;
+    font-size:14px;
+    display:flex;
+    gap:6px;
+    align-items:center;
+  }
+  .badge b{ color:var(--accent); }
+  button{
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    color:var(--text);
+    padding:9px 16px;
+    border-radius:10px;
+    font-size:14px;
+    cursor:pointer;
+    transition:transform .1s, background .15s;
+  }
+  button:hover{ background:#26333f; }
+  button:active{ transform:scale(0.95); }
+  button:disabled{ opacity:0.4; cursor:default; }
+  #board{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:22px;
+    max-width:820px;
+  }
+  .tube{
+    width:64px;
+    height:200px;
+    border:3px solid var(--glass-edge);
+    border-top:none;
+    border-radius:0 0 18px 18px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+    position:relative;
+    display:flex;
+    flex-direction:column-reverse;
+    padding:4px;
+    overflow:hidden;
+    cursor:pointer;
+    transition:transform .15s;
+  }
+  .tube::before{
+    content:'';
+    position:absolute;
+    top:-3px; left:-3px; right:-3px;
+    height:10px;
+    border:3px solid var(--glass-edge);
+    border-bottom:none;
+    border-radius:6px 6px 0 0;
+  }
+  .tube.selected{
+    transform:translateY(-14px);
+    border-color:var(--accent);
+    box-shadow:0 0 14px rgba(94,200,216,0.5);
+  }
+  .tube.shake{
+    animation:shake .3s;
+  }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-6px); }
+    75%{ transform:translateX(6px); }
+  }
+  .liquid{
+    width:100%;
+    height:23%;
+    border-radius:3px;
+    flex-shrink:0;
+  }
+  #winModal, #overModal{
+    position:fixed; inset:0;
+    background:rgba(6,10,15,0.75);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+  }
+  .modal-box{
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:16px;
+    padding:28px 32px;
+    text-align:center;
+    max-width:300px;
+  }
+  .modal-box h2{ margin-top:0; color:var(--accent); }
+  .modal-box p{ color:var(--sub); font-size:14px; }
+  .modal-box button{ margin-top:10px; }
+</style>
 </head>
 <body>
 
-<div id="overlay" onclick="closeMenu()"></div>
+<h1>💧 워터 소트 퍼즐</h1>
 
-<nav id="side-menu">
-    <div class="menu-header">
-        <button class="closebtn" onclick="closeMenu()">✕</button>
-        <h2>🎰 로또 생성기</h2>
-    </div>
-    <div class="menu-body">
-        <div class="menu-section-title">테마 색상</div>
-        <div class="theme-grid">
-            <button class="theme-btn" data-t="default" onclick="setTheme('default', this)">🟠 기본</button>
-            <button class="theme-btn" data-t="dark" onclick="setTheme('dark', this)">🌑 다크</button>
-            <button class="theme-btn" data-t="blue" onclick="setTheme('blue', this)">🔵 블루</button>
-            <button class="theme-btn" data-t="green" onclick="setTheme('green', this)">🟢 그린</button>
-            <button class="theme-btn" data-t="pink" onclick="setTheme('pink', this)">🌸 핑크</button>
-        </div>
-        <div class="menu-section-title">개발자의 말</div>
-        <div class="dev-note">
-            <div class="dev-title">👋 안녕하세요, 파수범입니다!</div>
-            저의 2번째 코딩이니 많관부 부탁합니다.<br><br>
-            열심히 만들었습니다. 앞으로도 더 좋은 앱으로 찾아뵙겠습니다! 😊
-        </div>
-    </div>
-</nav>
+<div class="hud">
+  <div class="badge">클리어 <b id="levelLabel">1</b></div>
+  <div class="badge">이동 <b id="moveLabel">0</b></div>
+  <button id="undoBtn" class="icon-btn" title="되돌리기">↩</button>
+  <button id="restartBtn" class="icon-btn" title="다시 섞기">🔄</button>
+</div>
 
-<div class="app-wrapper">
-    <header class="app-header">
-        <button class="hamburger" onclick="openMenu()">☰</button>
-        <h1 class="app-title">행운의 로또</h1>
-        <div style="width: 40px;"></div>
-    </header>
+<div id="board"></div>
 
-    <div style="display:flex; gap:8px; margin: 0 16px 10px; justify-content:center;">
-        <button id="modeAutoBtn" onclick="setMode('auto')" style="flex:1; padding:9px; border:none; border-radius:10px; font-weight:700; font-size:13px; background:var(--primary); color:white; cursor:pointer;">🎲 자동 모드</button>
-        <button id="modeManualBtn" onclick="setMode('manual')" style="flex:1; padding:9px; border:none; border-radius:10px; font-weight:700; font-size:13px; background:#555; color:white; cursor:pointer;">🔫 수동 모드</button>
-    </div>
-
-    <div class="btn-row" id="autoBtnRow">
-        <button class="btn-gen" onclick="generateLotto()">🎲 추첨</button>
-        <button class="btn-save" onclick="saveLotto()">💾 저장</button>
-        <button class="btn-clear" onclick="clearAll()">🗑 삭제</button>
-    </div>
-
-    <div class="btn-row" id="manualBtnRow" style="display:none;">
-        <button class="btn-gen" onclick="startRoulette()" id="startBtn">▶ 시작</button>
-        <button class="btn-save" onclick="saveLotto()">💾 저장</button>
-        <button class="btn-clear" onclick="clearAll()">🗑 삭제</button>
-    </div>
-
-    <div class="main-card">
-        <div class="number-card" id="result">
-            <div style="color:white;">숫자를 추첨하세요</div>
-        </div>
-    </div>
-
-    <div id="rouletteArea" style="display:none; margin: 12px 16px 0; background:var(--card); border-radius:24px; padding:20px; box-shadow:0 4px 20px rgba(0,0,0,0.08); text-align:center;">
-        <div style="position:relative; overflow:hidden; height:60px; background:#1a1a2e; border-radius:14px; margin-bottom:14px;">
-            <div id="rouletteStrip" style="display:flex; align-items:center; position:absolute; top:0; height:100%; transition:none; white-space:nowrap;"></div>
-            <div style="position:absolute; left:50%; top:0; bottom:0; transform:translateX(-50%); width:48px; border:3px solid var(--primary); border-radius:8px; pointer-events:none; box-shadow:0 0 12px var(--primary);"></div>
-        </div>
-        <div style="display:flex; align-items:center; justify-content:center; gap:16px;">
-            <div id="shootCount" style="font-size:13px; color:#888;">남은 발수: <b id="bulletsLeft">6</b></div>
-            <button id="shootBtn" onclick="shoot()" style="padding:12px 32px; background:#ff3b30; color:white; border:none; border-radius:14px; font-size:22px; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(255,59,48,0.4); display:none;">🔫 발사!</button>
-        </div>
-        <div id="hitNumbers" style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap; justify-content:center; min-height:34px;"></div>
-    </div>
-
-    <section class="history-section">
-        <h2 style="margin-bottom:10px; color: var(--text);">📜 추첨 기록</h2>
-        <div id="history-list"></div>
-    </section>
+<div id="winModal">
+  <div class="modal-box">
+    <h2>🎉 클리어!</h2>
+    <p id="winText">클리어했습니다.</p>
+    <button id="nextLevelBtn">다음 판</button>
+  </div>
 </div>
 
 <script>
-    // 총소리 (Web Audio API 합성 - 외부 파일 없이 동작)
-    let audioCtx = null;
-    function playGunshot() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const ctx = audioCtx;
+(function(){
+  const STORAGE_KEY = 'watersort_progress_v1';
+  const PALETTE = ['#e63946','#f4a261','#f2d144','#2a9d8f','#3a6ea5','#9b5de5']; // 6가지 색
 
-        // 노이즈 버퍼 생성
-        const bufLen = ctx.sampleRate * 0.35;
-        const buffer = ctx.createBuffer(1, bufLen, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1);
+  // ===== 효과음 (Web Audio API 합성 - 외부 파일 없이 동작) =====
+  let audioCtx = null;
+  function getCtx(){
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
 
-        const noise = ctx.createBufferSource();
-        noise.buffer = buffer;
+  // 1) 물 붓는 소리 - 노이즈 + 대역통과 필터로 '쪼르륵' 느낌
+  function playPourSound(){
+    const ctx = getCtx();
+    const dur = 0.28;
+    const bufLen = Math.floor(ctx.sampleRate * dur);
+    const buffer = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<bufLen;i++) data[i] = (Math.random()*2-1);
 
-        // 로우패스 필터 (둔탁한 발사음)
-        const filter = ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(1200, ctx.currentTime);
-        filter.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.15);
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
 
-        // 게인 엔벨로프 (빠른 어택, 빠른 감쇠)
-        const gain = ctx.createGain();
-        gain.gain.setValueAtTime(0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(1.2, ctx.currentTime + 0.003);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1800, ctx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + dur);
+    filter.Q.value = 1.2;
 
-        // 저주파 펀치감 (킥 느낌)
-        const osc = ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(120, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.08);
-        const oscGain = ctx.createGain();
-        oscGain.gain.setValueAtTime(0.8, ctx.currentTime);
-        oscGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
 
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(ctx.destination);
-        osc.connect(oscGain);
-        oscGain.connect(ctx.destination);
+    noise.connect(filter).connect(gain).connect(ctx.destination);
+    noise.start();
+    noise.stop(ctx.currentTime + dur);
+  }
 
-        noise.start(ctx.currentTime);
-        noise.stop(ctx.currentTime + 0.35);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.12);
-    }
-
-    let lottoHistory = JSON.parse(localStorage.getItem('lottoHistory')) || [];
-    let currentNumbers = [];
-    let currentMode = 'auto'; 
-    let rouletteRunning = false;
-    let rouletteInterval = null;
-    let rouletteOffset = 0;      
-    let rouletteSpeed = 0;
-    let hitNumbers = [];          
-    let bulletsLeft = 6;
-    let isStopping = false;
-    const ITEM_W = 52;            
-    const STRIP_NUMS = [];        
-    for(let rep = 0; rep < 6; rep++) for(let i=1;i<=45;i++) STRIP_NUMS.push(i);
-
-    function getBallColor(n) {
-        if(n <= 10) return '#fbc400';
-        if(n <= 20) return '#69c8f2';
-        if(n <= 30) return '#ff7272';
-        if(n <= 40) return '#aaaaaa';
-        return '#b0d840';
-    }
-
-    function setMode(mode) {
-        currentMode = mode;
-        const isAuto = mode === 'auto';
-        document.getElementById('autoBtnRow').style.display = isAuto ? '' : 'none';
-        document.getElementById('manualBtnRow').style.display = isAuto ? 'none' : '';
-        document.getElementById('rouletteArea').style.display = isAuto ? 'none' : '';
-        document.getElementById('modeAutoBtn').style.background = isAuto ? 'var(--primary)' : '#555';
-        document.getElementById('modeManualBtn').style.background = isAuto ? '#555' : 'var(--primary)';
-        currentNumbers = [];
-        document.getElementById('result').innerHTML = '<div style="color:white;">숫자를 추첨하세요</div>';
-        resetRoulette();
-    }
-
-    async function generateLotto() {
-        currentNumbers = Array.from({length: 45}, (_, i) => i + 1).sort(() => Math.random() - 0.5).slice(0, 6).sort((a, b) => a - b);
-        const res = document.getElementById('result');
-        res.innerHTML = ''; 
-        for(let n of currentNumbers) {
-            const ball = document.createElement('div');
-            ball.className = 'ball';
-            ball.style.backgroundColor = getBallColor(n);
-            ball.innerText = n;
-            res.appendChild(ball);
-            await new Promise(r => setTimeout(r, 400));
-            ball.classList.add('show');
-        }
-    }
-
-    function buildStrip() {
-        const strip = document.getElementById('rouletteStrip');
-        strip.innerHTML = '';
-        STRIP_NUMS.forEach((n, idx) => {
-            const el = document.createElement('div');
-            el.style.cssText = `width:${ITEM_W}px; min-width:${ITEM_W}px; height:60px; display:inline-flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; color:white; flex-shrink:0;`;
-            el.textContent = n;
-            strip.appendChild(el);
-        });
-    }
-
-    function resetRoulette() {
-        clearInterval(rouletteInterval);
-        rouletteRunning = false;
-        isStopping = false;
-        rouletteOffset = 0;
-        rouletteSpeed = 0;
-        hitNumbers = [];
-        bulletsLeft = 6;
-        document.getElementById('bulletsLeft').textContent = 6;
-        document.getElementById('shootBtn').style.display = 'none';
-        document.getElementById('startBtn').textContent = '▶ 시작';
-        document.getElementById('hitNumbers').innerHTML = '';
-        document.getElementById('result').innerHTML = '<div style="color:white;">숫자를 추첨하세요</div>';
-        currentNumbers = [];
-        if(document.getElementById('rouletteStrip').children.length === 0) buildStrip();
-        applyOffset();
-    }
-
-    function applyOffset() {
-        const strip = document.getElementById('rouletteStrip');
-        const totalW = STRIP_NUMS.length * ITEM_W;
-        rouletteOffset = ((rouletteOffset % totalW) + totalW) % totalW;
-        strip.style.transform = `translateX(${-rouletteOffset}px)`;
-    }
-
-    function getCenterNum() {
-        const stripEl = document.getElementById('rouletteStrip');
-        const containerW = stripEl.parentElement.offsetWidth;
-        const centerPx = rouletteOffset + containerW / 2 - ITEM_W / 2;
-        const idx = Math.round(centerPx / ITEM_W) % STRIP_NUMS.length;
-        const safeIdx = ((idx % STRIP_NUMS.length) + STRIP_NUMS.length) % STRIP_NUMS.length;
-        return STRIP_NUMS[safeIdx];
-    }
-
-    function startRoulette() {
-        if(rouletteRunning) return;
-        if(bulletsLeft === 0) { resetRoulette(); return; }
-        rouletteRunning = true;
-        isStopping = false;
-        rouletteSpeed = 4;
-        document.getElementById('startBtn').textContent = '🔄 진행중...';
-        document.getElementById('shootBtn').style.display = 'inline-block';
-        let accel = 0;
-        rouletteInterval = setInterval(() => {
-            if(accel < 60) { accel++; rouletteSpeed = Math.min(8, 2 + accel * 0.1); }
-            rouletteOffset += rouletteSpeed;
-            applyOffset();
-        }, 16);
-    }
-
-    function shoot() {
-        if(!rouletteRunning || isStopping || bulletsLeft <= 0) return;
-
-        // 총소리 재생
-        playGunshot();
-
-        let num = getCenterNum();
-        if(hitNumbers.includes(num)) {
-            flashCenter('❌', '#ff3b30');
-            return;
-        }
-
-        bulletsLeft--;
-        hitNumbers.push(num);
-        document.getElementById('bulletsLeft').textContent = bulletsLeft;
-        flashCenter('💥', '#ff9500');
-        addHitBall(num);
-
-        if(bulletsLeft === 0) stopRoulette();
-    }
-
-    function flashCenter(emoji, color) {
-        const area = document.getElementById('rouletteArea');
-        const flash = document.createElement('div');
-        flash.textContent = emoji;
-        flash.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:36px;pointer-events:none;z-index:10;animation:fadeUp 0.6s ease forwards;`;
-        area.style.position = 'relative';
-        area.appendChild(flash);
-        setTimeout(() => flash.remove(), 700);
-    }
-
-    function addHitBall(num) {
-        const container = document.getElementById('hitNumbers');
-        const ball = document.createElement('div');
-        ball.style.cssText = `width:34px;height:34px;min-width:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:13px;background:${getBallColor(num)};animation:popIn 0.3s ease;`;
-        ball.textContent = num;
-        container.appendChild(ball);
-    }
-
-    function stopRoulette() {
-        isStopping = true;
-        const decel = setInterval(() => {
-            rouletteSpeed *= 0.93;
-            rouletteOffset += rouletteSpeed;
-            applyOffset();
-            if(rouletteSpeed < 0.5) {
-                clearInterval(decel);
-                clearInterval(rouletteInterval);
-                rouletteRunning = false;
-                rouletteSpeed = 0;
-                finishManual();
-            }
-        }, 16);
-    }
-
-    function finishManual() {
-        currentNumbers = [...hitNumbers].sort((a, b) => a - b);
-        const res = document.getElementById('result');
-        res.innerHTML = '';
-        currentNumbers.forEach((n, i) => {
-            const ball = document.createElement('div');
-            ball.className = 'ball';
-            ball.style.backgroundColor = getBallColor(n);
-            ball.innerText = n;
-            res.appendChild(ball);
-            setTimeout(() => ball.classList.add('show'), i * 150);
-        });
-        document.getElementById('shootBtn').style.display = 'none';
-        document.getElementById('startBtn').textContent = '🔄 다시 시작';
-        document.getElementById('hitNumbers').innerHTML = '';
-    }
-
-    function setTheme(t, btn) {
-        document.documentElement.setAttribute('data-theme', t === 'default' ? '' : t);
-        localStorage.setItem('lottoTheme', t);
-        document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        closeMenu();
-    }
-
-    window.onload = () => {
-        const savedTheme = localStorage.getItem('lottoTheme') || 'default';
-        const btn = document.querySelector(`[data-t="${savedTheme}"]`);
-        if(btn) setTheme(savedTheme, btn);
-        buildStrip();
-    };
-
-    function openMenu() {
-        document.getElementById('side-menu').classList.add('open');
-        document.getElementById('overlay').classList.add('active');
-        history.pushState({ menuOpen: true }, '');
-    }
-    function closeMenu() {
-        document.getElementById('side-menu').classList.remove('open');
-        document.getElementById('overlay').classList.remove('active');
-        if(history.state && history.state.menuOpen) {
-            history.back();
-        }
-    }
-    window.addEventListener('popstate', () => {
-        document.getElementById('side-menu').classList.remove('open');
-        document.getElementById('overlay').classList.remove('active');
+  // 2) 병 하나 채우기 완료 - 맑은 벨소리
+  function playFillSound(){
+    const ctx = getCtx();
+    const now = ctx.currentTime;
+    [880, 1318.5].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const gain = ctx.createGain();
+      const start = now + i*0.05;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.3, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.4);
     });
+  }
 
-    function saveLotto() {
-        if(currentNumbers.length === 0) { alert("추첨 먼저!"); return; }
-        lottoHistory.unshift(currentNumbers);
-        localStorage.setItem('lottoHistory', JSON.stringify(lottoHistory));
-        updateUI();
+  // 3) 클리어 - 상승하는 짧은 팡파레
+  function playClearSound(){
+    const ctx = getCtx();
+    const now = ctx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      const gain = ctx.createGain();
+      const start = now + i*0.11;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.32, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.5);
+    });
+  }
+
+  let state = {
+    level: 1,
+    capacity: 4,
+    tubes: [],
+    selected: -1,
+    moves: 0,
+    history: []
+  };
+
+  function loadProgress(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const p = JSON.parse(raw);
+        state.level = p.level || 1;
+      }
+    }catch(e){}
+  }
+  function saveProgress(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({level: state.level}));
+    }catch(e){}
+  }
+
+  // 병 개수(색깔 6개 + 빈 병 1개)와 병의 용량(6칸)을 항상 동일하게 고정한다.
+  // 클리어 횟수가 늘어도 조건은 절대 바뀌지 않는다.
+  function levelConfig(level){
+    const emptyTubes = 1;
+    const capacity = 6;
+    const maxStates = 45000;
+    return { emptyTubes, capacity, maxStates };
+  }
+
+  function cloneTubes(tubes){
+    return tubes.map(t => t.slice());
+  }
+
+  function topColor(tube){
+    return tube.length ? tube[tube.length-1] : null;
+  }
+
+  function canPour(src, dst){
+    if(src === dst) return false;
+    const s = state.tubes[src], d = state.tubes[dst];
+    if(s.length === 0) return false;
+    if(d.length >= state.capacity) return false;
+    const sc = topColor(s);
+    const dc = topColor(d);
+    if(dc !== null && dc !== sc) return false;
+    return true;
+  }
+
+  function pourAmount(src, dst){
+    const s = state.tubes[src], d = state.tubes[dst];
+    const sc = topColor(s);
+    let count = 0;
+    for(let i = s.length-1; i>=0; i--){
+      if(s[i] === sc) count++; else break;
     }
+    const space = state.capacity - d.length;
+    return Math.min(count, space);
+  }
 
-    function clearAll() {
-        if(confirm("정말로 전체 기록을 삭제하시겠습니까?")) {
-            lottoHistory = []; localStorage.removeItem('lottoHistory'); updateUI();
+  function doPour(src, dst, recordHistory){
+    const amt = pourAmount(src, dst);
+    if(amt <= 0) return false;
+    if(recordHistory){
+      state.history.push(cloneTubes(state.tubes));
+      if(state.history.length > 200) state.history.shift();
+    }
+    const sc = topColor(state.tubes[src]);
+    for(let i=0;i<amt;i++){
+      state.tubes[src].pop();
+      state.tubes[dst].push(sc);
+    }
+    return true;
+  }
+
+  function isSolved(){
+    const cap = state.capacity;
+    return state.tubes.every(t => t.length === 0 || (t.length === cap && t.every(c => c === t[0])));
+  }
+
+  function tubeStateKey(tubes){
+    return tubes.map(t => t.join(',')).join('|');
+  }
+
+  function isTubesDone(tubes, cap){
+    return tubes.every(t => t.length===0 || (t.length===cap && t.every(c=>c===t[0])));
+  }
+
+  // 주어진 배치가 실제로 풀 수 있는지 BFS로 검증 (탐색 상한을 둬서 무거워지지 않게 함)
+  function isSolvable(tubes, cap, maxStates){
+    if(isTubesDone(tubes, cap)) return true;
+    const visited = new Set([tubeStateKey(tubes)]);
+    let frontier = [tubes];
+    let explored = 0;
+    while(frontier.length && explored < maxStates){
+      const next = [];
+      for(const cur of frontier){
+        const n = cur.length;
+        for(let i=0;i<n;i++){
+          if(cur[i].length===0) continue;
+          for(let j=0;j<n;j++){
+            if(i===j) continue;
+            const s = cur[i], d = cur[j];
+            if(d.length >= cap) continue;
+            const sc = s[s.length-1];
+            const dc = d.length ? d[d.length-1] : null;
+            if(dc !== null && dc !== sc) continue;
+            // 꽉 찬 단색 병을 빈 병으로 그대로 옮기는 무의미한 수는 건너뛴다
+            if(dc === null && d.length === 0 && s.every(c => c === sc)) continue;
+            let count = 0;
+            for(let k=s.length-1;k>=0;k--){ if(s[k]===sc) count++; else break; }
+            const amt = Math.min(count, cap-d.length);
+            if(amt<=0) continue;
+            const ns = cur.map(t => t.slice());
+            for(let k=0;k<amt;k++){ ns[j].push(ns[i].pop()); }
+            if(isTubesDone(ns, cap)) return true;
+            const key = tubeStateKey(ns);
+            if(visited.has(key)) continue;
+            visited.add(key);
+            next.push(ns);
+            explored++;
+            if(explored >= maxStates) break;
+          }
+          if(explored >= maxStates) break;
         }
+        if(explored >= maxStates) break;
+      }
+      frontier = next;
     }
+    return false;
+  }
 
-    function updateUI() {
-        const list = document.getElementById('history-list');
-        list.innerHTML = lottoHistory.map((n, i) => `
-            <div class="history-item">
-                <span>${n.join(', ')}</span>
-                <button class="btn-delete" onclick="del(${i})">삭제</button>
-            </div>`).join('');
+  function randomTubes(cap, emptyTubes){
+    const colors = PALETTE.slice(0, 6);
+    let units = [];
+    colors.forEach(c => { for(let i=0;i<cap;i++) units.push(c); });
+    for(let i=units.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [units[i], units[j]] = [units[j], units[i]];
     }
-
-    function del(i) {
-        if(confirm("이 기록을 삭제하시겠습니까?")) {
-            lottoHistory.splice(i, 1); localStorage.setItem('lottoHistory', JSON.stringify(lottoHistory)); updateUI();
-        }
+    let tubes = [];
+    for(let i=0;i<colors.length;i++){
+      tubes.push(units.slice(i*cap, i*cap+cap));
     }
+    for(let i=0;i<emptyTubes;i++) tubes.push([]);
+    return tubes;
+  }
 
-    updateUI();
+  function generatePuzzle(level){
+    const { emptyTubes, capacity, maxStates } = levelConfig(level);
+
+    for(let attempt=0; attempt<400; attempt++){
+      const tubes = randomTubes(capacity, emptyTubes);
+      if(isTubesDone(tubes, capacity)) continue;
+      if(isSolvable(tubes, capacity, maxStates)) return { tubes, capacity };
+    }
+    // 400번 안에 못 찾으면 빈 병을 하나씩 늘려가며 반드시 풀리는 배치를 찾을 때까지 재시도
+    let extraEmpty = emptyTubes + 1;
+    while(true){
+      for(let attempt=0; attempt<400; attempt++){
+        const tubes = randomTubes(capacity, extraEmpty);
+        if(isTubesDone(tubes, capacity)) continue;
+        if(isSolvable(tubes, capacity, maxStates)) return { tubes, capacity };
+      }
+      extraEmpty++;
+    }
+  }
+
+  function newLevel(level){
+    const { tubes, capacity } = generatePuzzle(level);
+    state.level = level;
+    state.capacity = capacity;
+    state.tubes = tubes;
+    state.selected = -1;
+    state.moves = 0;
+    state.history = [];
+    saveProgress();
+    render();
+  }
+
+  function render(){
+    document.getElementById('levelLabel').textContent = state.level;
+    document.getElementById('moveLabel').textContent = state.moves;
+    document.getElementById('undoBtn').disabled = state.history.length === 0;
+
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+    const segH = (100 / state.capacity).toFixed(2) + '%';
+    state.tubes.forEach((tube, idx) => {
+      const div = document.createElement('div');
+      div.className = 'tube' + (state.selected===idx ? ' selected' : '');
+      div.dataset.idx = idx;
+      tube.forEach(color => {
+        const liq = document.createElement('div');
+        liq.className = 'liquid';
+        liq.style.background = color;
+        liq.style.height = segH;
+        div.appendChild(liq);
+      });
+      div.addEventListener('click', () => onTubeClick(idx));
+      board.appendChild(div);
+    });
+  }
+
+  function onTubeClick(idx){
+    if(state.selected === -1){
+      if(state.tubes[idx].length === 0) return;
+      state.selected = idx;
+      render();
+      return;
+    }
+    if(state.selected === idx){
+      state.selected = -1;
+      render();
+      return;
+    }
+    if(canPour(state.selected, idx)){
+      doPour(state.selected, idx, true);
+      state.moves++;
+      playPourSound();
+      const filledTube = state.tubes[idx];
+      const isFilled = filledTube.length === state.capacity && filledTube.every(c => c === filledTube[0]);
+      if(isFilled) setTimeout(playFillSound, 180);
+      state.selected = -1;
+      render();
+      if(isSolved()) onWin();
+    } else {
+      const el = document.querySelector('.tube[data-idx="'+idx+'"]');
+      if(el){
+        el.classList.add('shake');
+        setTimeout(()=>el.classList.remove('shake'), 300);
+      }
+      state.selected = -1;
+      render();
+    }
+  }
+
+  function onWin(){
+    playClearSound();
+    document.getElementById('winText').textContent =
+      state.level + '번째 클리어! (이동 ' + state.moves + '회)';
+    document.getElementById('winModal').style.display = 'flex';
+  }
+
+  document.getElementById('nextLevelBtn').addEventListener('click', () => {
+    document.getElementById('winModal').style.display = 'none';
+    newLevel(state.level + 1);
+  });
+
+  document.getElementById('undoBtn').addEventListener('click', () => {
+    if(state.history.length === 0) return;
+    state.tubes = state.history.pop();
+    state.selected = -1;
+    state.moves = Math.max(0, state.moves-1);
+    render();
+  });
+
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    newLevel(state.level);
+  });
+
+  document.body.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
+
+  loadProgress();
+  newLevel(state.level);
+})();
 </script>
 
-<style>
-@keyframes popIn { from { transform: scale(0.3); opacity:0; } to { transform: scale(1); opacity:1; } }
-@keyframes fadeUp { from { opacity:1; transform:translate(-50%,-50%) scale(1); } to { opacity:0; transform:translate(-50%,-80%) scale(1.4); } }
-</style>
 </body>
 </html>
