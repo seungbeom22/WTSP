@@ -46,6 +46,7 @@
     margin-bottom:20px;
     flex-wrap:nowrap;
     justify-content:center;
+    max-width:100vw;
   }
   .icon-btn{
     width:40px;
@@ -56,6 +57,12 @@
     justify-content:center;
     font-size:18px;
     flex-shrink:0;
+  }
+  @media (max-width:420px){
+    .hud{ gap:6px; }
+    .badge{ padding:6px 8px; font-size:12px; gap:4px; }
+    .icon-btn{ width:34px; height:34px; font-size:15px; }
+    #tutorialBtn{ padding:0 8px; font-size:15px; }
   }
   #undoBtn{
     font-size:28px;
@@ -212,7 +219,7 @@
   <button id="undoBtn" class="icon-btn" title="한 칸 되돌리기">↩︎</button>
   <button id="resetBtn" class="icon-btn" title="이번 판 초기화">⟲</button>
   <button id="restartBtn" class="icon-btn" title="새 판">🔄</button>
-  <button id="tutorialBtn" title="튜토리얼 모드">🎓 튜토리얼</button>
+  <button id="tutorialBtn" title="튜토리얼 모드">🎓</button>
 </div>
 
 <div id="tutorialBar" style="display:none;">
@@ -703,7 +710,11 @@
 
   document.getElementById('nextLevelBtn').addEventListener('click', () => {
     document.getElementById('winModal').style.display = 'none';
-    newLevel(state.level + 1);
+    if(tutorial.active){
+      newLevel(state.level);
+    } else {
+      newLevel(state.level + 1);
+    }
   });
 
   document.getElementById('undoBtn').addEventListener('click', () => {
