@@ -164,6 +164,42 @@
   .modal-box h2{ margin-top:0; color:var(--accent); }
   .modal-box p{ color:var(--sub); font-size:14px; }
   .modal-box button{ margin-top:10px; }
+
+  #tutorialBar{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+    background:rgba(94,200,216,0.08);
+    border:1px solid var(--accent);
+    border-radius:12px;
+    padding:8px 14px;
+  }
+  #tutorialBtn.active{
+    background:var(--accent);
+    color:#0f1620;
+    border-color:var(--accent);
+    font-weight:bold;
+  }
+  #tutNextBtn, #tutBackBtn{
+    font-size:20px;
+    color:var(--text);
+  }
+  #tutNextBtn:not(:disabled):hover, #tutBackBtn:not(:disabled):hover{
+    background:var(--accent);
+    color:#0f1620;
+  }
+  .tube.tut-src{
+    border-color:#f2d144;
+    box-shadow:0 0 16px rgba(242,209,68,0.7);
+    transform:translateY(-14px);
+  }
+  .tube.tut-dst{
+    border-color:#2a9d8f;
+    box-shadow:0 0 16px rgba(42,157,143,0.7);
+  }
 </style>
 </head>
 <body>
@@ -176,6 +212,14 @@
   <button id="undoBtn" class="icon-btn" title="한 칸 되돌리기">↩︎</button>
   <button id="resetBtn" class="icon-btn" title="이번 판 초기화">⟲</button>
   <button id="restartBtn" class="icon-btn" title="새 판">🔄</button>
+  <button id="tutorialBtn" title="튜토리얼 모드">🎓 튜토리얼</button>
+</div>
+
+<div id="tutorialBar" style="display:none;">
+  <div class="badge">튜토리얼 <b id="tutStepLabel">0</b> / <b id="tutTotalLabel">0</b></div>
+  <button id="tutBackBtn" class="icon-btn" title="한 칸 뒤로">◀</button>
+  <button id="tutNextBtn" class="icon-btn" title="한 칸 가기">▶</button>
+  <button id="tutExitBtn" title="튜토리얼 종료">종료</button>
 </div>
 
 <div id="board"></div>
@@ -277,6 +321,143 @@
     moves: 0,
     history: []
   };
+
+  // ===== 튜토리얼 모드 =====
+  let tutorial = {
+    active: false,
+    solution: [],   // [{from, to}, ...] 지금 상태부터 클리어까지의 남은 최적 수순
+    step: 0         // 지금까지 실행한 수의 개수
+  };
+
+  // 최단 해법 탐색 (BFS). 상태 하나당 이전 상태로 가는 이동 정보를 저장해 경로를 복원한다.
+  function solvePuzzle(tubes, cap, maxStates){
+    if(isTubesDone(tubes, cap)) return [];
+    const startKey = tubeStateKey(tubes);
+    const visited = new Map();
+    visited.set(startKey, null);
+    let frontier = [tubes];
+    let explored = 0;
+    while(frontier.length && explored < maxStates){
+      const next = [];
+      for(const cur of frontier){
+        const curKey = tubeStateKey(cur);
+        const n = cur.length;
+        for(let i=0;i<n;i++){
+          if(cur[i].length===0) continue;
+          for(let j=0;j<n;j++){
+            if(i===j) continue;
+            const s = cur[i], d = cur[j];
+            if(d.length >= cap) continue;
+            const sc = s[s.length-1];
+            const dc = d.length ? d[d.length-1] : null;
+            if(dc !== null && dc !== sc) continue;
+            if(dc === null && d.length === 0 && s.every(c => c === sc)) continue;
+            let count = 0;
+            for(let k=s.length-1;k>=0;k--){ if(s[k]===sc) count++; else break; }
+            const amt = Math.min(count, cap-d.length);
+            if(amt<=0) continue;
+            const ns = cur.map(t => t.slice());
+            for(let k=0;k<amt;k++){ ns[j].push(ns[i].pop()); }
+            const key = tubeStateKey(ns);
+            if(visited.has(key)) continue;
+            visited.set(key, { prevKey: curKey, from:i, to:j });
+            if(isTubesDone(ns, cap)){
+              const path = [];
+              let ck = key;
+              while(visited.get(ck)){
+                const info = visited.get(ck);
+                path.push({from: info.from, to: info.to});
+                ck = info.prevKey;
+              }
+              path.reverse();
+              return path;
+            }
+            next.push(ns);
+            explored++;
+            if(explored >= maxStates) break;
+          }
+          if(explored >= maxStates) break;
+        }
+        if(explored >= maxStates) break;
+      }
+      frontier = next;
+    }
+    return null;
+  }
+
+  function ensureTutorialSolution(){
+    const path = solvePuzzle(cloneTubes(state.tubes), state.capacity, 60000);
+    tutorial.solution = path || [];
+    tutorial.step = 0;
+  }
+
+  function toggleTutorial(){
+    tutorial.active = !tutorial.active;
+    const btn = document.getElementById('tutorialBtn');
+    const bar = document.getElementById('tutorialBar');
+    if(tutorial.active){
+      btn.classList.add('active');
+      bar.style.display = 'flex';
+      ensureTutorialSolution();
+    } else {
+      btn.classList.remove('active');
+      bar.style.display = 'none';
+    }
+    render();
+  }
+
+  function clearTutorialHighlight(){
+    document.querySelectorAll('.tube.tut-src, .tube.tut-dst').forEach(el=>{
+      el.classList.remove('tut-src','tut-dst');
+    });
+  }
+
+  function renderTutorialBar(){
+    if(!tutorial.active) return;
+    document.getElementById('tutStepLabel').textContent = tutorial.step;
+    document.getElementById('tutTotalLabel').textContent = tutorial.solution.length;
+    document.getElementById('tutNextBtn').disabled = tutorial.step >= tutorial.solution.length;
+    document.getElementById('tutBackBtn').disabled = tutorial.step <= 0;
+
+    clearTutorialHighlight();
+    if(tutorial.step < tutorial.solution.length){
+      const mv = tutorial.solution[tutorial.step];
+      const srcEl = document.querySelector('.tube[data-idx="'+mv.from+'"]');
+      const dstEl = document.querySelector('.tube[data-idx="'+mv.to+'"]');
+      if(srcEl) srcEl.classList.add('tut-src');
+      if(dstEl) dstEl.classList.add('tut-dst');
+    }
+  }
+
+  function tutorialNext(){
+    if(!tutorial.active) return;
+    if(tutorial.step >= tutorial.solution.length) return;
+    const mv = tutorial.solution[tutorial.step];
+    if(!canPour(mv.from, mv.to)){
+      ensureTutorialSolution();
+      if(tutorial.solution.length === 0) { render(); return; }
+      return tutorialNext();
+    }
+    doPour(mv.from, mv.to, true);
+    state.moves++;
+    tutorial.step++;
+    playPourSound();
+    const filledTube = state.tubes[mv.to];
+    const isFilled = filledTube.length === state.capacity && filledTube.every(c => c === filledTube[0]);
+    if(isFilled) setTimeout(playFillSound, 180);
+    render();
+    if(isSolved()) onWin();
+  }
+
+  function tutorialBack(){
+    if(!tutorial.active) return;
+    if(tutorial.step <= 0) return;
+    if(state.history.length === 0) return;
+    state.tubes = state.history.pop();
+    state.moves = Math.max(0, state.moves-1);
+    tutorial.step--;
+    render();
+  }
 
   function loadProgress(){
     try{
@@ -450,6 +631,7 @@
     state.moves = 0;
     state.history = [];
     saveProgress();
+    if(tutorial.active) ensureTutorialSolution();
     render();
   }
 
@@ -475,6 +657,7 @@
       div.addEventListener('click', () => onTubeClick(idx));
       board.appendChild(div);
     });
+    renderTutorialBar();
   }
 
   function onTubeClick(idx){
@@ -497,6 +680,7 @@
       const isFilled = filledTube.length === state.capacity && filledTube.every(c => c === filledTube[0]);
       if(isFilled) setTimeout(playFillSound, 180);
       state.selected = -1;
+      if(tutorial.active) ensureTutorialSolution(); // 직접 조작한 경우 남은 최적 경로를 다시 계산
       render();
       if(isSolved()) onWin();
     } else {
@@ -527,6 +711,7 @@
     state.tubes = state.history.pop();
     state.selected = -1;
     state.moves = Math.max(0, state.moves-1);
+    if(tutorial.active) ensureTutorialSolution();
     render();
   });
 
@@ -535,11 +720,19 @@
     state.selected = -1;
     state.moves = 0;
     state.history = [];
+    if(tutorial.active) ensureTutorialSolution();
     render();
   });
 
   document.getElementById('restartBtn').addEventListener('click', () => {
     newLevel(state.level);
+  });
+
+  document.getElementById('tutorialBtn').addEventListener('click', toggleTutorial);
+  document.getElementById('tutNextBtn').addEventListener('click', tutorialNext);
+  document.getElementById('tutBackBtn').addEventListener('click', tutorialBack);
+  document.getElementById('tutExitBtn').addEventListener('click', () => {
+    if(tutorial.active) toggleTutorial();
   });
 
   document.body.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
