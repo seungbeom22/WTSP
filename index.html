@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>워터 소트 퍼즐</title>
+<style>
+  :root{
+    --bg:#0f1620;
+    --bg2:#141d29;
+    --glass:#1c2733;
+    --glass-edge:#33455a;
+    --accent:#5ec8d8;
+    --text:#e8eef2;
+    --sub:#8fa3b3;
+    --danger:#e6616a;
+  }
+  *{box-sizing:border-box;}
+  html, body{
+    overflow:hidden;
+    height:100%;
+    overscroll-behavior:none;
+    touch-action:none;
+  }
+  body{
+    margin:0;
+    min-height:100vh;
+    background:radial-gradient(circle at top, var(--bg2), var(--bg));
+    font-family:'Segoe UI', 'Malgun Gothic', sans-serif;
+    color:var(--text);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:20px 12px 60px;
+    width:100%;
+  }
+  .header-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    width:100%;
+    max-width:640px;
+    margin-bottom:20px;
+    padding:0 4px;
+  }
+  .header-title{
+    font-size:22px;
+    letter-spacing:2px;
+    color:var(--accent);
+    font-weight:bold;
+  }
+  .header-clear{
+    font-size:15px;
+    padding:0 16px;
+    height:40px;
+  }
+  .hud-wrap{
+    position:relative;
+    width:100%;
+    max-width:640px;
+    margin-bottom:20px;
+  }
+  .hud{
+    display:flex;
+    gap:24px;
+    align-items:stretch;
+    flex-wrap:nowrap;
+    justify-content:center;
+    max-width:100vw;
+    width:100%;
+  }
+  .hud > *{
+    height:44px;
+    box-sizing:border-box;
+  }
+  .icon-btn{
+    width:60px;
+    padding:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+    flex-shrink:0;
+  }
+  @media (max-width:420px){
+    .hud{ gap:16px; }
+    .hud > *{ height:40px; }
+    .badge{ padding:0 8px; font-size:12px; gap:4px; }
+    .icon-btn{ width:50px; font-size:18px; }
+    #tutorialBtn{ width:50px; font-size:15px; }
+    .header-clear{ height:36px; font-size:13px; padding:0 12px; }
+  }
+  #undoBtn{
+    font-size:22px;
+    color:var(--text);
+  }
+  #resetBtn{
+    font-size:18px;
+    color:var(--text);
+  }
+  .badge{
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:10px;
+    padding:0 10px;
+    font-size:14px;
+    display:flex;
+    gap:6px;
+    align-items:center;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .badge b{ color:var(--accent); }
+  button{
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    color:var(--text);
+    padding:9px 16px;
+    border-radius:10px;
+    font-size:14px;
+    cursor:pointer;
+    transition:transform .1s, background .15s;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  button:hover{ background:#26333f; }
+  button:active{ transform:scale(0.95); }
+  button:disabled{ opacity:0.4; cursor:default; }
+  #tutorialBtn{
+    width:60px;
+    padding:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+    flex-shrink:0;
+  }
+  #board{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:22px;
+    max-width:820px;
+    margin-top:12px;
+  }
+  #board .tube:nth-child(-n+4){
+    position:relative;
+    top:-6px;
+  }
+  .tube{
+    width:64px;
+    height:200px;
+    border:3px solid var(--glass-edge);
+    border-top:none;
+    border-radius:0 0 18px 18px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+    position:relative;
+    display:flex;
+    flex-direction:column-reverse;
+    padding:4px;
+    overflow:hidden;
+    cursor:pointer;
+    transition:transform .15s;
+  }
+  .tube::before{
+    content:'';
+    position:absolute;
+    top:-3px; left:-3px; right:-3px;
+    height:10px;
+    border:3px solid var(--glass-edge);
+    border-bottom:none;
+    border-radius:6px 6px 0 0;
+  }
+  .tube.selected{
+    transform:translateY(-14px);
+    border-color:var(--accent);
+    box-shadow:0 0 14px rgba(94,200,216,0.5);
+  }
+  .tube.shake{
+    animation:shake .3s;
+  }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-6px); }
+    75%{ transform:translateX(6px); }
+  }
+  .liquid{
+    width:100%;
+    height:23%;
+    border-radius:3px;
+    flex-shrink:0;
+    border-top:2px solid rgba(0,0,0,0.28);
+  }
+  #winModal, #overModal{
+    position:fixed; inset:0;
+    background:rgba(6,10,15,0.75);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+  }
+  .modal-box{
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:16px;
+    padding:28px 32px;
+    text-align:center;
+    max-width:300px;
+  }
+  .modal-box h2{ margin-top:0; color:var(--accent); }
+  .modal-box p{ color:var(--sub); font-size:14px; }
+  .modal-box button{ margin-top:10px; width:100%; justify-content:center; }
+
+  #tutorialBar{
+    position:absolute;
+    inset:0;
+    display:flex;
+    gap:0;
+    align-items:center;
+    justify-content:space-around;
+    flex-wrap:nowrap;
+    background:#12202a;
+    border:none;
+    border-radius:12px;
+    padding:0 4px;
+    z-index:5;
+  }
+  #tutorialBar > *{
+    height:40px;
+    box-sizing:border-box;
+  }
+  #tutNavGroup{
+    display:contents;
+  }
+  @media (max-width:420px){
+    #tutorialBar{ padding:0 4px; }
+    #tutorialBar > *{ height:34px; }
+    #tutNavGroup{ gap:12px; }
+  }
+  #tutorialBtn.active{
+    background:var(--accent);
+    color:#0f1620;
+    border-color:var(--accent);
+    font-weight:bold;
+  }
+  #tutNextBtn, #tutBackBtn{
+    font-size:20px;
+    color:var(--text);
+    width:44px;
+  }
+  #tutNextBtn:not(:disabled):hover, #tutBackBtn:not(:disabled):hover{
+    background:var(--accent);
+    color:#0f1620;
+  }
+  .tube.tut-src{
+    border-color:#f2d144;
+    box-shadow:0 0 16px rgba(242,209,68,0.7);
+    transform:translateY(-14px);
+  }
+  .tube.tut-dst{
+    border-color:#2a9d8f;
+    box-shadow:0 0 16px rgba(42,157,143,0.7);
+  }
+
+  /* 극한 모드 토글 */
+  .extreme-toggle-wrap{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-shrink:0;
+  }
+  .extreme-toggle{
+    position:relative;
+    width:36px;
+    height:20px;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .extreme-toggle input{
+    opacity:0;
+    width:0;
+    height:0;
+    position:absolute;
+  }
+  .extreme-slider{
+    position:absolute;
+    inset:0;
+    background:#c26080;
+    border-radius:20px;
+    transition:background 0.2s;
+  }
+  .extreme-slider::before{
+    content:'';
+    position:absolute;
+    width:14px;
+    height:14px;
+    left:3px;
+    top:3px;
+    background:#fff;
+    border-radius:50%;
+    transition:transform 0.2s;
+  }
+  .extreme-toggle input:checked + .extreme-slider{
+    background:#e6161f;
+  }
+  .extreme-toggle input:checked + .extreme-slider::before{
+    transform:translateX(16px);
+  }
+
+  /* 극한 모드 확인 모달 */
+  #extremeModal{
+    position:fixed; inset:0;
+    background:rgba(6,10,15,0.75);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+  }
+</style>
+</head>
+<body>
+
+<div class="header-row">
+  <div class="header-title">💧 워터 소트 퍼즐</div>
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <label class="extreme-toggle" title="극한 모드">
+      <input type="checkbox" id="extremeToggle">
+      <span class="extreme-slider"></span>
+    </label>
+    <div class="badge header-clear">클리어 <b id="levelLabel">0</b></div>
+  </div>
+</div>
+
+<div id="extremeModal">
+  <div class="modal-box">
+    <h2 id="extremeModalTitle">⚠️ 극한 모드</h2>
+    <p id="extremeModalText">지금부터는 극한 모드입니다.</p>
+    <button id="extremeModalOk">확인</button>
+  </div>
+</div>
+
+<div class="hud-wrap">
+  <div class="hud" id="hud">
+    <button id="undoBtn" class="icon-btn" title="한 칸 되돌리기">↩︎</button>
+    <button id="resetBtn" class="icon-btn" title="이번 판 초기화">⟲</button>
+    <button id="restartBtn" class="icon-btn" title="새 판">🔄</button>
+    <button id="tutorialBtn" title="튜토리얼 모드">🎓</button>
+  </div>
+
+  <div id="tutorialBar" style="display:none;">
+    <div class="badge">진행 <b id="tutStepLabel">0</b> / <b id="tutTotalLabel">0</b></div>
+    <div id="tutNavGroup">
+      <button id="tutBackBtn" class="icon-btn" title="한 칸 뒤로">◀</button>
+      <button id="tutNextBtn" class="icon-btn" title="한 칸 가기">▶</button>
+    </div>
+    <button id="tutExitBtn" title="튜토리얼 종료">종료</button>
+  </div>
+</div>
+
+<div id="board"></div>
+
+<div id="winModal">
+  <div class="modal-box">
+    <h2>🎉 클리어!</h2>
+    <p id="winText">클리어했습니다.</p>
+    <button id="nextLevelBtn">확인</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'watersort_progress_v1';
+  const PALETTE = ['#e63946','#f4a261','#f2d144','#2a9d8f','#3a6ea5','#9b5de5']; // 6가지 색
+
+  // ===== 효과음 (Web Audio API 합성 - 외부 파일 없이 동작) =====
+  let audioCtx = null;
+  let audioUnlocked = false;
+
+  // 모바일: 터치 이벤트 내 동기 흐름에서 무음 재생으로 AudioContext unlock
+  function unlockAudio(){
+    if(audioUnlocked) return;
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtx.destination);
+    src.start(0);
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    audioUnlocked = true;
+  }
+
+  function getCtx(){
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  // 1) 이동 소리 - 뽁뽁이 파열음 (크고 경쾌하게)
+  function playPourSound(){
+    const ctx = getCtx();
+    const now = ctx.currentTime;
+
+    // 뽁뽁이 특유의 공기 파열음: 노이즈 버스트 + 저음 공명
+    // --- 화이트 노이즈 파열 (뽁 질감) ---
+    const bufLen = ctx.sampleRate * 0.06;
+    const buffer = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1);
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    // 노이즈를 밴드패스로 필터링해 뽁 음색 만들기
+    const bpf = ctx.createBiquadFilter();
+    bpf.type = 'bandpass';
+    bpf.frequency.setValueAtTime(420, now);
+    bpf.frequency.exponentialRampToValueAtTime(120, now + 0.055);
+    bpf.Q.value = 1.8;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(1.4, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
+
+    noise.connect(bpf).connect(noiseGain).connect(ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.07);
+
+    // --- 저주파 보디감 (뽁 울림) ---
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(180, now);
+    osc.frequency.exponentialRampToValueAtTime(55, now + 0.07);
+
+    const oscGain = ctx.createGain();
+    oscGain.gain.setValueAtTime(1.0, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+    osc.connect(oscGain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.09);
+
+    // --- 귀여운 고음 틱 (뽁의 밝은 어택) ---
+    const tick = ctx.createOscillator();
+    tick.type = 'square';
+    tick.frequency.setValueAtTime(900, now);
+    tick.frequency.exponentialRampToValueAtTime(300, now + 0.025);
+
+    const tickGain = ctx.createGain();
+    tickGain.gain.setValueAtTime(0.3, now);
+    tickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+    tick.connect(tickGain).connect(ctx.destination);
+    tick.start(now);
+    tick.stop(now + 0.035);
+  }
+
+  // 2) 병 하나 채우기 완료 - 맑은 벨소리
+  function playFillSound(){
+    const ctx = getCtx();
+    const now = ctx.currentTime;
+    [880, 1318.5].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const gain = ctx.createGain();
+      const start = now + i*0.05;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.3, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.4);
+    });
+  }
+
+  // 3) 클리어 - 상승하는 짧은 팡파레
+  function playClearSound(){
+    const ctx = getCtx();
+    const now = ctx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      const gain = ctx.createGain();
+      const start = now + i*0.11;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.32, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.5);
+    });
+  }
+
+  // ===== 극한 모드 =====
+  const EXTREME_KEY = 'watersort_extreme_v1';
+  let extremeMode = false;
+
+  // 삐삐삐삐삐 금지음 (5회 반복 비프)
+  function playBuzzSound(){
+    const ctx = getCtx();
+    const now = ctx.currentTime;
+    for(let i = 0; i < 5; i++){
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = 440;
+      const gain = ctx.createGain();
+      const t = now + i * 0.18;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.01);
+      gain.gain.setValueAtTime(0.35, t + 0.09);
+      gain.gain.linearRampToValueAtTime(0, t + 0.13);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.15);
+    }
+  }
+
+  function saveExtremeMode(on){
+    try{ localStorage.setItem(EXTREME_KEY, on ? '1' : '0'); }catch(e){}
+  }
+
+  function setExtremeMode(on){
+    extremeMode = on;
+    document.getElementById('extremeToggle').checked = on;
+    document.getElementById('restartBtn').disabled = on;
+    document.getElementById('tutorialBtn').disabled = on;
+    saveExtremeMode(on);
+    // 극한 모드 활성화 시 튜토리얼 강제 종료
+    if(on && tutorial.active) toggleTutorial();
+  }
+
+  function showExtremeModal(title, text, onOk){
+    document.getElementById('extremeModalTitle').textContent = title;
+    document.getElementById('extremeModalText').textContent = text;
+    const modal = document.getElementById('extremeModal');
+    modal.style.display = 'flex';
+    const btn = document.getElementById('extremeModalOk');
+    const handler = () => {
+      modal.style.display = 'none';
+      btn.removeEventListener('click', handler);
+      onOk();
+    };
+    btn.addEventListener('click', handler);
+  }
+
+  // 극한 모드 ON 상태로 이탈했다가 복귀 시 비프음
+  function loadExtremeMode(){
+    try{
+      const saved = localStorage.getItem(EXTREME_KEY);
+      if(saved === '1'){
+        setExtremeMode(true);
+        // 첫 터치/클릭 시 비프음 (브라우저 autoplay 정책 우회)
+        let buzzFired = false;
+        const fireBuzz = () => {
+          if(buzzFired) return;
+          buzzFired = true;
+          unlockAudio();
+          playBuzzSound();
+          document.removeEventListener('click', fireBuzz);
+          document.removeEventListener('touchstart', fireBuzz);
+        };
+        document.addEventListener('click', fireBuzz);
+        document.addEventListener('touchstart', fireBuzz);
+      }
+    }catch(e){}
+  }
+
+  document.getElementById('extremeToggle').addEventListener('change', function(){
+    if(this.checked){
+      showExtremeModal('⚠️ 극한 모드', '지금부터는 극한 모드입니다.', () => {
+        setExtremeMode(true);
+      });
+    } else {
+      showExtremeModal('🚫 극한 모드 종료', '극한 모드를 중지합니다.', () => {
+        setExtremeMode(false);
+        playBuzzSound();
+      });
+    }
+  });
+
+  let state = {
+    level: 1,
+    clearCount: 0,
+    capacity: 4,
+    tubes: [],
+    initial: [],
+    selected: -1,
+    moves: 0,
+    history: []
+  };
+
+  // ===== 튜토리얼 모드 =====
+  let tutorial = {
+    active: false,
+    solution: [],   // [{from, to}, ...] 지금 상태부터 클리어까지의 남은 최적 수순
+    step: 0         // 지금까지 실행한 수의 개수
+  };
+
+  // 최단 해법 탐색 (BFS). 상태 하나당 이전 상태로 가는 이동 정보를 저장해 경로를 복원한다.
+  function solvePuzzle(tubes, cap, maxStates){
+    if(isTubesDone(tubes, cap)) return [];
+    const startKey = tubeStateKey(tubes);
+    const visited = new Map();
+    visited.set(startKey, null);
+    let frontier = [tubes];
+    let explored = 0;
+    while(frontier.length && explored < maxStates){
+      const next = [];
+      for(const cur of frontier){
+        const curKey = tubeStateKey(cur);
+        const n = cur.length;
+        for(let i=0;i<n;i++){
+          if(cur[i].length===0) continue;
+          for(let j=0;j<n;j++){
+            if(i===j) continue;
+            const s = cur[i], d = cur[j];
+            if(d.length >= cap) continue;
+            const sc = s[s.length-1];
+            const dc = d.length ? d[d.length-1] : null;
+            if(dc !== null && dc !== sc) continue;
+            if(dc === null && d.length === 0 && s.every(c => c === sc)) continue;
+            let count = 0;
+            for(let k=s.length-1;k>=0;k--){ if(s[k]===sc) count++; else break; }
+            const amt = Math.min(count, cap-d.length);
+            if(amt<=0) continue;
+            const ns = cur.map(t => t.slice());
+            for(let k=0;k<amt;k++){ ns[j].push(ns[i].pop()); }
+            const key = tubeStateKey(ns);
+            if(visited.has(key)) continue;
+            visited.set(key, { prevKey: curKey, from:i, to:j });
+            if(isTubesDone(ns, cap)){
+              const path = [];
+              let ck = key;
+              while(visited.get(ck)){
+                const info = visited.get(ck);
+                path.push({from: info.from, to: info.to});
+                ck = info.prevKey;
+              }
+              path.reverse();
+              return path;
+            }
+            next.push(ns);
+            explored++;
+            if(explored >= maxStates) break;
+          }
+          if(explored >= maxStates) break;
+        }
+        if(explored >= maxStates) break;
+      }
+      frontier = next;
+    }
+    return null;
+  }
+
+  function ensureTutorialSolution(){
+    const path = solvePuzzle(cloneTubes(state.tubes), state.capacity, 60000);
+    tutorial.solution = path || [];
+    tutorial.step = 0;
+  }
+
+  function toggleTutorial(){
+    tutorial.active = !tutorial.active;
+    const btn = document.getElementById('tutorialBtn');
+    const bar = document.getElementById('tutorialBar');
+    const hud = document.getElementById('hud');
+    if(tutorial.active){
+      btn.classList.add('active');
+      // 튜토리얼 진입 시 수동으로 진행한 내용을 초기 상태로 되돌린다
+      state.tubes = cloneTubes(state.initial);
+      state.selected = -1;
+      state.moves = 0;
+      state.history = [];
+      hud.style.visibility = 'hidden';
+      bar.style.display = 'flex';
+      ensureTutorialSolution();
+    } else {
+      btn.classList.remove('active');
+      hud.style.visibility = 'visible';
+      bar.style.display = 'none';
+    }
+    render();
+  }
+
+  function clearTutorialHighlight(){
+    document.querySelectorAll('.tube.tut-src, .tube.tut-dst').forEach(el=>{
+      el.classList.remove('tut-src','tut-dst');
+    });
+  }
+
+  function renderTutorialBar(){
+    if(!tutorial.active) return;
+    document.getElementById('tutStepLabel').textContent = tutorial.step;
+    document.getElementById('tutTotalLabel').textContent = tutorial.solution.length;
+    document.getElementById('tutNextBtn').disabled = tutorial.step >= tutorial.solution.length;
+    document.getElementById('tutBackBtn').disabled = tutorial.step <= 0;
+
+    clearTutorialHighlight();
+    if(tutorial.step < tutorial.solution.length){
+      const mv = tutorial.solution[tutorial.step];
+      const srcEl = document.querySelector('.tube[data-idx="'+mv.from+'"]');
+      const dstEl = document.querySelector('.tube[data-idx="'+mv.to+'"]');
+      if(srcEl) srcEl.classList.add('tut-src');
+      if(dstEl) dstEl.classList.add('tut-dst');
+    }
+  }
+
+  function tutorialNext(){
+    if(!tutorial.active) return;
+    if(tutorial.step >= tutorial.solution.length) return;
+    const mv = tutorial.solution[tutorial.step];
+    if(!canPour(mv.from, mv.to)){
+      ensureTutorialSolution();
+      if(tutorial.solution.length === 0) { render(); return; }
+      return tutorialNext();
+    }
+    doPour(mv.from, mv.to, true);
+    state.moves++;
+    tutorial.step++;
+    playPourSound();
+    const filledTube = state.tubes[mv.to];
+    const isFilled = filledTube.length === state.capacity && filledTube.every(c => c === filledTube[0]);
+    if(isFilled) setTimeout(playFillSound, 180);
+    render();
+    if(isSolved()) onWin();
+  }
+
+  function tutorialBack(){
+    if(!tutorial.active) return;
+    if(tutorial.step <= 0) return;
+    if(state.history.length === 0) return;
+    state.tubes = state.history.pop();
+    state.moves = Math.max(0, state.moves-1);
+    tutorial.step--;
+    render();
+  }
+
+  function loadProgress(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const p = JSON.parse(raw);
+        state.level = p.level || 1;
+        state.clearCount = p.clearCount || (state.level - 1);
+      }
+    }catch(e){}
+  }
+  function saveProgress(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({level: state.level, clearCount: state.clearCount}));
+    }catch(e){}
+  }
+
+  // 병 개수(색깔 6개 + 빈 병 1개)와 병의 용량(6칸)을 항상 동일하게 고정한다.
+  // 클리어 횟수가 늘어도 조건은 절대 바뀌지 않는다.
+  function levelConfig(level){
+    const emptyTubes = 1;
+    const capacity = 6;
+    const maxStates = 45000;
+    return { emptyTubes, capacity, maxStates };
+  }
+
+  function cloneTubes(tubes){
+    return tubes.map(t => t.slice());
+  }
+
+  function topColor(tube){
+    return tube.length ? tube[tube.length-1] : null;
+  }
+
+  function canPour(src, dst){
+    if(src === dst) return false;
+    const s = state.tubes[src], d = state.tubes[dst];
+    if(s.length === 0) return false;
+    if(d.length >= state.capacity) return false;
+    const sc = topColor(s);
+    const dc = topColor(d);
+    if(dc !== null && dc !== sc) return false;
+    return true;
+  }
+
+  function pourAmount(src, dst){
+    const s = state.tubes[src], d = state.tubes[dst];
+    const sc = topColor(s);
+    let count = 0;
+    for(let i = s.length-1; i>=0; i--){
+      if(s[i] === sc) count++; else break;
+    }
+    const space = state.capacity - d.length;
+    return Math.min(count, space);
+  }
+
+  function doPour(src, dst, recordHistory){
+    const amt = pourAmount(src, dst);
+    if(amt <= 0) return false;
+    if(recordHistory){
+      state.history.push(cloneTubes(state.tubes));
+      if(state.history.length > 200) state.history.shift();
+    }
+    const sc = topColor(state.tubes[src]);
+    for(let i=0;i<amt;i++){
+      state.tubes[src].pop();
+      state.tubes[dst].push(sc);
+    }
+    return true;
+  }
+
+  function isSolved(){
+    const cap = state.capacity;
+    return state.tubes.every(t => t.length === 0 || (t.length === cap && t.every(c => c === t[0])));
+  }
+
+  function tubeStateKey(tubes){
+    return tubes.map(t => t.join(',')).join('|');
+  }
+
+  function isTubesDone(tubes, cap){
+    return tubes.every(t => t.length===0 || (t.length===cap && t.every(c=>c===t[0])));
+  }
+
+  // 주어진 배치가 실제로 풀 수 있는지 BFS로 검증 (탐색 상한을 둬서 무거워지지 않게 함)
+  function isSolvable(tubes, cap, maxStates){
+    if(isTubesDone(tubes, cap)) return true;
+    const visited = new Set([tubeStateKey(tubes)]);
+    let frontier = [tubes];
+    let explored = 0;
+    while(frontier.length && explored < maxStates){
+      const next = [];
+      for(const cur of frontier){
+        const n = cur.length;
+        for(let i=0;i<n;i++){
+          if(cur[i].length===0) continue;
+          for(let j=0;j<n;j++){
+            if(i===j) continue;
+            const s = cur[i], d = cur[j];
+            if(d.length >= cap) continue;
+            const sc = s[s.length-1];
+            const dc = d.length ? d[d.length-1] : null;
+            if(dc !== null && dc !== sc) continue;
+            // 꽉 찬 단색 병을 빈 병으로 그대로 옮기는 무의미한 수는 건너뛴다
+            if(dc === null && d.length === 0 && s.every(c => c === sc)) continue;
+            let count = 0;
+            for(let k=s.length-1;k>=0;k--){ if(s[k]===sc) count++; else break; }
+            const amt = Math.min(count, cap-d.length);
+            if(amt<=0) continue;
+            const ns = cur.map(t => t.slice());
+            for(let k=0;k<amt;k++){ ns[j].push(ns[i].pop()); }
+            if(isTubesDone(ns, cap)) return true;
+            const key = tubeStateKey(ns);
+            if(visited.has(key)) continue;
+            visited.add(key);
+            next.push(ns);
+            explored++;
+            if(explored >= maxStates) break;
+          }
+          if(explored >= maxStates) break;
+        }
+        if(explored >= maxStates) break;
+      }
+      frontier = next;
+    }
+    return false;
+  }
+
+  function randomTubes(cap, emptyTubes){
+    const colors = PALETTE.slice(0, 6);
+    let units = [];
+    colors.forEach(c => { for(let i=0;i<cap;i++) units.push(c); });
+    for(let i=units.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [units[i], units[j]] = [units[j], units[i]];
+    }
+    let tubes = [];
+    for(let i=0;i<colors.length;i++){
+      tubes.push(units.slice(i*cap, i*cap+cap));
+    }
+    for(let i=0;i<emptyTubes;i++) tubes.push([]);
+    return tubes;
+  }
+
+  function generatePuzzle(level){
+    const { emptyTubes, capacity, maxStates } = levelConfig(level);
+
+    for(let attempt=0; attempt<400; attempt++){
+      const tubes = randomTubes(capacity, emptyTubes);
+      if(isTubesDone(tubes, capacity)) continue;
+      if(isSolvable(tubes, capacity, maxStates)) return { tubes, capacity };
+    }
+    // 400번 안에 못 찾으면 빈 병을 하나씩 늘려가며 반드시 풀리는 배치를 찾을 때까지 재시도
+    let extraEmpty = emptyTubes + 1;
+    while(true){
+      for(let attempt=0; attempt<400; attempt++){
+        const tubes = randomTubes(capacity, extraEmpty);
+        if(isTubesDone(tubes, capacity)) continue;
+        if(isSolvable(tubes, capacity, maxStates)) return { tubes, capacity };
+      }
+      extraEmpty++;
+    }
+  }
+
+  function newLevel(level){
+    const { tubes, capacity } = generatePuzzle(level);
+    state.level = level;
+    state.capacity = capacity;
+    state.tubes = tubes;
+    state.initial = cloneTubes(tubes);
+    state.selected = -1;
+    state.moves = 0;
+    state.history = [];
+    saveProgress();
+    if(tutorial.active) ensureTutorialSolution();
+    render();
+  }
+
+  function render(){
+    document.getElementById('levelLabel').textContent = state.clearCount;
+    document.getElementById('undoBtn').disabled = state.history.length === 0;
+
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+    const segH = (100 / state.capacity).toFixed(2) + '%';
+    state.tubes.forEach((tube, idx) => {
+      const div = document.createElement('div');
+      div.className = 'tube' + (state.selected===idx ? ' selected' : '');
+      div.dataset.idx = idx;
+      tube.forEach(color => {
+        const liq = document.createElement('div');
+        liq.className = 'liquid';
+        liq.style.background = color;
+        liq.style.height = segH;
+        div.appendChild(liq);
+      });
+      div.addEventListener('click', () => onTubeClick(idx));
+      board.appendChild(div);
+    });
+    renderTutorialBar();
+  }
+
+  function onTubeClick(idx){
+    if(tutorial.active) return; // 튜토리얼 모드: 클릭 완전 차단
+    unlockAudio(); // 모바일: 첫 터치 시 동기 흐름 내에서 AudioContext unlock
+    if(state.selected === -1){
+      if(state.tubes[idx].length === 0) return;
+      state.selected = idx;
+      render();
+      return;
+    }
+    if(state.selected === idx){
+      state.selected = -1;
+      render();
+      return;
+    }
+    if(canPour(state.selected, idx)){
+      doPour(state.selected, idx, true);
+      state.moves++;
+      playPourSound();
+      const filledTube = state.tubes[idx];
+      const isFilled = filledTube.length === state.capacity && filledTube.every(c => c === filledTube[0]);
+      if(isFilled) setTimeout(playFillSound, 180);
+      state.selected = -1;
+      if(tutorial.active) ensureTutorialSolution(); // 직접 조작한 경우 남은 최적 경로를 다시 계산
+      render();
+      if(isSolved()) onWin();
+    } else {
+      const el = document.querySelector('.tube[data-idx="'+idx+'"]');
+      if(el){
+        el.classList.add('shake');
+        setTimeout(()=>el.classList.remove('shake'), 300);
+      }
+      state.selected = -1;
+      render();
+    }
+  }
+
+  function onWin(){
+    if(tutorial.active) return; // 튜토리얼은 보기 전용 모드이므로 클리어 모달을 띄우지 않는다
+    playClearSound();
+    state.clearCount++;
+    saveProgress();
+    document.getElementById('levelLabel').textContent = state.clearCount;
+    document.getElementById('winText').textContent =
+      state.clearCount + '번째 클리어!';
+    document.getElementById('winModal').style.display = 'flex';
+  }
+
+  document.getElementById('nextLevelBtn').addEventListener('click', () => {
+    document.getElementById('winModal').style.display = 'none';
+    if(tutorial.active){
+      newLevel(state.level);
+    } else {
+      newLevel(state.level + 1);
+    }
+  });
+
+  document.getElementById('undoBtn').addEventListener('click', () => {
+    if(state.history.length === 0) return;
+    state.tubes = state.history.pop();
+    state.selected = -1;
+    state.moves = Math.max(0, state.moves-1);
+    if(tutorial.active) ensureTutorialSolution();
+    render();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    state.tubes = cloneTubes(state.initial);
+    state.selected = -1;
+    state.moves = 0;
+    state.history = [];
+    if(tutorial.active) ensureTutorialSolution();
+    render();
+  });
+
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    newLevel(state.level);
+  });
+
+  document.getElementById('tutorialBtn').addEventListener('click', toggleTutorial);
+  document.getElementById('tutNextBtn').addEventListener('click', tutorialNext);
+  document.getElementById('tutBackBtn').addEventListener('click', tutorialBack);
+  document.getElementById('tutExitBtn').addEventListener('click', () => {
+    if(tutorial.active) toggleTutorial();
+  });
+
+  document.body.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
+
+  loadProgress();
+  loadExtremeMode();
+  newLevel(state.level);
+})();
+</script>
+
+</body>
+</html>
