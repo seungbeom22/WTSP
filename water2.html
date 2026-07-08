@@ -450,12 +450,23 @@
   /* 대결 중 HUD */
   #battleHud{
     display:none;
+    flex-direction:column;
+    gap:10px;
     width:100%;
     max-width:640px;
-    align-items:center;
-    justify-content:space-between;
     padding:0 4px;
     margin-bottom:12px;
+  }
+  .battle-hud-scores{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .battle-hud-controls{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
   }
   .battle-badge{
     display:flex;
@@ -465,6 +476,16 @@
     color:var(--sub);
   }
   .battle-badge b{ color:var(--accent); font-size:16px; }
+  #battleExitBtn{
+    font-size:13px;
+    padding:0 14px;
+    height:40px;
+    color:var(--danger);
+    border-color:var(--danger);
+  }
+  @media (max-width:420px){
+    #battleExitBtn{ height:36px; font-size:12px; padding:0 10px; }
+  }
   #battleResultModal{
     position:fixed; inset:0;
     background:rgba(6,10,15,0.85);
@@ -517,8 +538,15 @@
 
 <!-- 대결 중 상단 HUD -->
 <div id="battleHud">
-  <div class="battle-badge">👤 나 <b id="battleMyMoves">0</b>수</div>
-  <div class="battle-badge" style="color:#e63946;">⚔️ 상대 <b id="battleOpMoves">0</b>수</div>
+  <div class="battle-hud-scores">
+    <div class="battle-badge">👤 나 <b id="battleMyMoves">0</b>수</div>
+    <div class="battle-badge" style="color:#e63946;">⚔️ 상대 <b id="battleOpMoves">0</b>수</div>
+  </div>
+  <div class="battle-hud-controls">
+    <button id="battleUndoBtn" class="icon-btn" title="한 칸 되돌리기">↩︎</button>
+    <button id="battleResetBtn" class="icon-btn" title="이번 판 초기화">⟲</button>
+    <button id="battleExitBtn" title="대결 나가기">🚪 나가기</button>
+  </div>
 </div>
 
 <!-- 대결 결과 모달 -->
@@ -1232,6 +1260,7 @@
 
   function onTubeClick(idx){
     if(tutorial.active) return; // 튜토리얼 모드: 클릭 완전 차단
+    if(battle.active && battle.matchOver) return; // 대결이 이미 끝난 상태면 클릭 무시
     if(state.animating) return; // 애니메이션 진행 중에는 클릭 무시
     unlockAudio(); // 모바일: 첫 터치 시 동기 흐름 내에서 AudioContext unlock
     if(state.selected === -1){
@@ -1325,7 +1354,9 @@
     role: null,       // 'host' | 'guest'
     opponentDone: false,
     myDone: false,
-    listener: null
+    matchOver: false,
+    listener: null,
+    setupListenerOff: null // 방 만들기/입장 대기 중인 리스너 해제 함수
   };
 
   function setBattleUI(inBattle){
@@ -1392,7 +1423,41 @@
 
   function waitForFirebase(cb){
     if(window._fdb){ cb(); return; }
-    window.addEventListener('firebase-ready', cb, { once: true });
+    let done = false;
+    // firebase-ready 이벤트가 이미 발생하고 지나간 경우를 대비해
+    // 폴링도 병행한다 (50ms 간격, 최대 5초).
+    let pollCount = 0;
+    const pollId = setInterval(() => {
+      pollCount++;
+      if(window._fdb){
+        clearInterval(pollId);
+        if(done) return;
+        done = true;
+        cb();
+        return;
+      }
+      if(pollCount >= 100){ clearInterval(pollId); } // 5초 후 포기
+    }, 50);
+
+    const timeoutId = setTimeout(() => {
+      clearInterval(pollId);
+      if(done) return;
+      done = true;
+      const statusEl = document.getElementById('battleStatus');
+      if(statusEl){
+        statusEl.textContent = '⚠️ 서버에 연결하지 못했습니다. index.html을 더블클릭해서 열었다면 로컬 서버(예: python3 -m http.server)나 실제 웹 호스팅으로 실행해 주세요.';
+      }
+      document.getElementById('battleCreateBtn').style.display = '';
+      document.getElementById('battleJoinBtn').style.display = '';
+    }, 5000);
+
+    window.addEventListener('firebase-ready', () => {
+      clearInterval(pollId);
+      if(done) return;
+      done = true;
+      clearTimeout(timeoutId);
+      cb();
+    }, { once: true });
   }
 
   function updateBattleHud(){
@@ -1415,6 +1480,8 @@
         guestMoves: 0,
         hostDone: false,
         guestDone: false,
+        hostLeft: false,
+        guestLeft: false,
         tubes: null,
         capacity: null
       });
@@ -1431,14 +1498,28 @@
         if(!data) return;
         if(data.status === 'ready'){
           window._foff(dbRef, 'value', listener);
-          // 퍼즐 생성 후 Firebase에 저장
-          const { tubes, capacity } = generatePuzzle(state.level);
-          window._fset(window._fref(db, 'rooms/' + code + '/tubes'), tubes);
-          window._fset(window._fref(db, 'rooms/' + code + '/capacity'), capacity);
-          window._fset(window._fref(db, 'rooms/' + code + '/status'), 'playing');
-          startBattle(code, 'host', tubes, capacity);
+          battle.setupListenerOff = null;
+          document.getElementById('battleStatus').textContent = '퍼즐 생성 중...';
+          // generatePuzzle()이 BFS를 반복 실행하므로 메인 스레드를 오래 점유한다.
+          // setTimeout 0으로 UI 업데이트를 먼저 그리게 한 뒤 생성을 시작한다.
+          setTimeout(() => {
+            const { tubes, capacity } = generatePuzzle(state.level);
+            window._fset(dbRef, {
+              status: 'playing',
+              hostMoves: 0,
+              guestMoves: 0,
+              hostDone: false,
+              guestDone: false,
+              hostLeft: false,
+              guestLeft: false,
+              tubes: JSON.stringify(tubes),
+              capacity: capacity
+            });
+            startBattle(code, 'host', tubes, capacity);
+          }, 0);
         }
       });
+      battle.setupListenerOff = () => window._foff(dbRef, 'value', listener);
     });
   });
 
@@ -1473,9 +1554,11 @@
           if(!d) return;
           if(d.status === 'playing' && d.tubes && d.capacity){
             window._foff(dbRef, 'value', listener);
-            startBattle(code, 'guest', d.tubes, d.capacity);
+            battle.setupListenerOff = null;
+            startBattle(code, 'guest', JSON.parse(d.tubes), d.capacity);
           }
         });
+        battle.setupListenerOff = () => window._foff(dbRef, 'value', listener);
       });
     });
   });
@@ -1491,6 +1574,7 @@
     battle.active = true;
     battle.myDone = false;
     battle.opponentDone = false;
+    battle.matchOver = false;
     setBattleUI(true);
     updateBattleHud();
     render();
@@ -1498,12 +1582,19 @@
     // 상대방 수 실시간 감지
     const opField = role === 'host' ? 'guestMoves' : 'hostMoves';
     const opDoneField = role === 'host' ? 'guestDone' : 'hostDone';
+    const opLeftField = role === 'host' ? 'guestLeft' : 'hostLeft';
     const db = window._fdb;
     const dbRef = window._fref(db, 'rooms/' + code);
     const listener = window._fonValue(dbRef, (snap) => {
       const d = snap.val();
       if(!d) return;
       document.getElementById('battleOpMoves').textContent = d[opField] || 0;
+      if(battle.matchOver) return;
+      if(d[opLeftField]){
+        // 상대가 대결 도중 나감 → 내가 승리
+        endBattle(true, true);
+        return;
+      }
       if(d[opDoneField] && !battle.opponentDone){
         battle.opponentDone = true;
         if(!battle.myDone){
@@ -1559,16 +1650,22 @@
     if(onDone) onDone();
   }
 
-  function endBattle(iWin){
+  function endBattle(iWin, opponentLeft){
+    battle.matchOver = true;
     if(battle.listener) battle.listener();
     battle.listener = null;
     playClearSound();
 
     const emoji = iWin ? '🏆' : '😢';
     const title = iWin ? '승리!' : '패배...';
-    const desc = iWin
-      ? `먼저 클리어! 내 이동 수: ${state.moves}`
-      : `상대가 먼저 클리어했어요. 내 이동 수: ${state.moves}`;
+    let desc;
+    if(opponentLeft){
+      desc = '상대방이 대결을 나갔습니다. 승리!';
+    } else {
+      desc = iWin
+        ? `먼저 클리어! 내 이동 수: ${state.moves}`
+        : `상대가 먼저 클리어했어요. 내 이동 수: ${state.moves}`;
+    }
 
     document.getElementById('battleResultEmoji').textContent = emoji;
     document.getElementById('battleResultTitle').textContent = title;
@@ -1581,12 +1678,78 @@
     battle.active = false;
     battle.roomCode = null;
     battle.role = null;
+    battle.matchOver = false;
+    setBattleUI(false);
+    newLevel(state.level);
+  });
+
+  // 대결 중 되돌리기 / 초기화 / 나가기
+  document.getElementById('battleUndoBtn').addEventListener('click', () => {
+    if(!battle.active || battle.matchOver || state.animating) return;
+    if(state.history.length === 0) return;
+    state.tubes = state.history.pop();
+    state.selected = -1;
+    state.moves = Math.max(0, state.moves - 1);
+    updateBattleHud();
+    if(battle.roomCode){
+      const db = window._fdb;
+      const myMovesField = battle.role === 'host' ? 'hostMoves' : 'guestMoves';
+      window._fset(window._fref(db, 'rooms/' + battle.roomCode + '/' + myMovesField), state.moves);
+    }
+    render();
+  });
+
+  document.getElementById('battleResetBtn').addEventListener('click', () => {
+    if(!battle.active || battle.matchOver || state.animating) return;
+    state.tubes = cloneTubes(state.initial);
+    state.selected = -1;
+    state.moves = 0;
+    state.history = [];
+    updateBattleHud();
+    if(battle.roomCode){
+      const db = window._fdb;
+      const myMovesField = battle.role === 'host' ? 'hostMoves' : 'guestMoves';
+      window._fset(window._fref(db, 'rooms/' + battle.roomCode + '/' + myMovesField), state.moves);
+    }
+    render();
+  });
+
+  document.getElementById('battleExitBtn').addEventListener('click', () => {
+    if(!battle.active || battle.matchOver) return;
+    if(!confirm('정말 대결을 나가시겠습니까? 나가면 상대방이 승리 처리됩니다.')) return;
+    battle.matchOver = true;
+    if(battle.roomCode && window._fdb){
+      const db = window._fdb;
+      const leftField = battle.role === 'host' ? 'hostLeft' : 'guestLeft';
+      window._fset(window._fref(db, 'rooms/' + battle.roomCode + '/' + leftField), true);
+    }
+    if(battle.listener) battle.listener();
+    battle.listener = null;
+    battle.active = false;
+    battle.roomCode = null;
+    battle.role = null;
+    battle.matchOver = false;
     setBattleUI(false);
     newLevel(state.level);
   });
 
   document.getElementById('battleBtn').addEventListener('click', showBattleScreen);
-  document.getElementById('battleBackBtn').addEventListener('click', hideBattleScreen);
+  document.getElementById('battleBackBtn').addEventListener('click', () => {
+    // 방 만들기/입장 대기 중이던 리스너를 반드시 해제한다.
+    // (해제하지 않으면 뒤로가기 이후에도 게스트가 뒤늦게 들어와서
+    //  갑자기 대결 화면으로 전환돼버리거나, 버튼이 응답하지 않는 것처럼 보인다)
+    if(battle.setupListenerOff){
+      battle.setupListenerOff();
+      battle.setupListenerOff = null;
+    }
+    // 내가 방장이었고 아직 게스트가 들어오지 않았다면 방 정보를 정리한다.
+    if(battle.role === 'host' && battle.roomCode && window._fdb){
+      window._fset(window._fref(window._fdb, 'rooms/' + battle.roomCode), null);
+    }
+    battle.roomCode = null;
+    battle.role = null;
+    hideBattleScreen();
+  });
 
 })();
 </script>
