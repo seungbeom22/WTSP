@@ -1108,8 +1108,11 @@
       shrinkSrcUnits(srcEl, amt, stepDelay);
       growDstUnits(dstEl, sc, amt, segH, stepDelay);
 
-      setTimeout(()=>{ srcEl.style.transform = ''; }, streamDuration + 40);
-      setTimeout(()=>{ finalizePour(src, dst, onDone); }, streamDuration + 140);
+      const tiltResetMs = streamDuration + 40;      // 기울기 원복 시작
+      const finalizeMs  = tiltResetMs + 240;         // 220ms 트랜지션 완료 후 20ms 여유
+
+      setTimeout(()=>{ srcEl.style.transform = ''; }, tiltResetMs);
+      setTimeout(()=>{ finalizePour(src, dst, onDone); }, finalizeMs);
     } else {
       finalizePour(src, dst, onDone);
     }
@@ -1549,10 +1552,12 @@
         // ready 신호 전송
         window._fset(window._fref(db, 'rooms/' + code + '/status'), 'ready');
         // 호스트가 퍼즐 올릴 때까지 대기
+        let battleStarted = false;
         const listener = window._fonValue(dbRef, (snap2) => {
           const d = snap2.val();
           if(!d) return;
-          if(d.status === 'playing' && d.tubes && d.capacity){
+          if(!battleStarted && d.status === 'playing' && d.tubes && d.capacity){
+            battleStarted = true;
             window._foff(dbRef, 'value', listener);
             battle.setupListenerOff = null;
             startBattle(code, 'guest', JSON.parse(d.tubes), d.capacity);
