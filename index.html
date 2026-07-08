@@ -4,6 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>워터 소트 퍼즐</title>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  const firebaseConfig = {
+    apiKey: "AIzaSyC4Oq-0ixr_LzRci5fdsqiAHqg_31irCXw",
+    authDomain: "water-sope.firebaseapp.com",
+    databaseURL: "https://water-sope-default-rtdb.firebaseio.com",
+    projectId: "water-sope",
+    storageBucket: "water-sope.firebasestorage.app",
+    messagingSenderId: "299047158188",
+    appId: "1:299047158188:web:2847f5edb3c94910bb3a09"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  window._fdb = db;
+  window._fref = ref;
+  window._fset = set;
+  window._fget = get;
+  window._fonValue = onValue;
+  window._foff = off;
+  window.dispatchEvent(new Event("firebase-ready"));
+</script>
 <style>
   :root{
     --bg:#0f1620;
@@ -143,6 +165,7 @@
     gap:22px;
     max-width:820px;
     margin-top:12px;
+    position:relative;
   }
   #board .tube:nth-child(-n+4){
     position:relative;
@@ -162,6 +185,7 @@
     overflow:hidden;
     cursor:pointer;
     transition:transform .15s;
+    transform-origin:bottom center;
   }
   .tube::before{
     content:'';
@@ -191,6 +215,28 @@
     border-radius:3px;
     flex-shrink:0;
     border-top:2px solid rgba(0,0,0,0.28);
+    transition:height .28s cubic-bezier(.4,0,.2,1);
+  }
+  .pour-stream{
+    position:absolute;
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    top:0;
+    left:0;
+    pointer-events:none;
+    z-index:40;
+    opacity:0;
+    box-shadow:0 0 5px rgba(255,255,255,0.4);
+    animation-name:pourFlow;
+    animation-timing-function:linear;
+    animation-fill-mode:forwards;
+  }
+  @keyframes pourFlow{
+    0%{ offset-distance:0%; opacity:0; }
+    10%{ opacity:1; }
+    82%{ opacity:1; }
+    100%{ offset-distance:100%; opacity:0; }
   }
   #winModal, #overModal{
     position:fixed; inset:0;
@@ -317,6 +363,126 @@
     justify-content:center;
     z-index:50;
   }
+
+  /* ===== 실시간 대결 ===== */
+  #battleBtn{
+    font-size:13px;
+    padding:0 14px;
+    height:36px;
+    background:linear-gradient(135deg,#e63946,#9b5de5);
+    border:none;
+    color:#fff;
+    font-weight:bold;
+    letter-spacing:1px;
+    flex-shrink:0;
+  }
+  #battleBtn:hover{ background:linear-gradient(135deg,#c0303c,#7a3fb8); }
+
+  #battleScreen{
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:24px;
+    width:100%;
+    max-width:380px;
+    margin-top:40px;
+  }
+  #battleScreen h2{
+    color:var(--accent);
+    font-size:20px;
+    margin:0;
+    letter-spacing:2px;
+  }
+  .battle-main-btn{
+    width:240px;
+    height:58px;
+    font-size:16px;
+    font-weight:bold;
+    border-radius:14px;
+    letter-spacing:1px;
+  }
+  #battleRoomCode{
+    font-size:36px;
+    font-weight:bold;
+    color:#f2d144;
+    letter-spacing:10px;
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:14px;
+    padding:14px 32px;
+    display:none;
+  }
+  #battleStatus{
+    color:var(--sub);
+    font-size:14px;
+    min-height:20px;
+    text-align:center;
+  }
+  #battleJoinWrap{
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+    width:100%;
+  }
+  #battleJoinInput{
+    width:200px;
+    height:52px;
+    font-size:28px;
+    font-weight:bold;
+    text-align:center;
+    letter-spacing:8px;
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:12px;
+    color:#f2d144;
+    outline:none;
+  }
+  #battleJoinInput::placeholder{ color:#4a5f70; letter-spacing:4px; font-size:16px; }
+  #battleBackBtn{
+    font-size:13px;
+    padding:0 20px;
+    height:36px;
+    color:var(--sub);
+  }
+
+  /* 대결 중 HUD */
+  #battleHud{
+    display:none;
+    width:100%;
+    max-width:640px;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 4px;
+    margin-bottom:12px;
+  }
+  .battle-badge{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    font-size:14px;
+    color:var(--sub);
+  }
+  .battle-badge b{ color:var(--accent); font-size:16px; }
+  #battleResultModal{
+    position:fixed; inset:0;
+    background:rgba(6,10,15,0.85);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:60;
+  }
+  #battleResultBox{
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:20px;
+    padding:36px 40px;
+    text-align:center;
+  }
+  #battleResultBox h2{ margin-top:0; font-size:28px; }
+  #battleResultBox p{ color:var(--sub); margin:8px 0 20px; }
+  #battleResultBox button{ width:100%; height:48px; font-size:15px; }
 </style>
 </head>
 <body>
@@ -324,11 +490,44 @@
 <div class="header-row">
   <div class="header-title">💧 워터 소트 퍼즐</div>
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+    <button id="battleBtn">⚔️ 대결</button>
     <label class="extreme-toggle" title="극한 모드">
       <input type="checkbox" id="extremeToggle">
       <span class="extreme-slider"></span>
     </label>
     <div class="badge header-clear">클리어 <b id="levelLabel">0</b></div>
+  </div>
+</div>
+
+<!-- 실시간 대결 화면 -->
+<div id="battleScreen">
+  <h2>⚔️ 실시간 대결</h2>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">
+    <button class="battle-main-btn" id="battleCreateBtn">🏠 방 만들기</button>
+    <button class="battle-main-btn" id="battleJoinBtn">🔑 방 번호 입력</button>
+  </div>
+  <div id="battleRoomCode"></div>
+  <div id="battleStatus"></div>
+  <div id="battleJoinWrap">
+    <input id="battleJoinInput" type="text" maxlength="4" placeholder="번호 입력" inputmode="numeric">
+    <button class="battle-main-btn" id="battleJoinConfirmBtn" style="width:200px;height:48px;font-size:15px;">접속하기</button>
+  </div>
+  <button id="battleBackBtn">← 돌아가기</button>
+</div>
+
+<!-- 대결 중 상단 HUD -->
+<div id="battleHud">
+  <div class="battle-badge">👤 나 <b id="battleMyMoves">0</b>수</div>
+  <div class="battle-badge" style="color:#e63946;">⚔️ 상대 <b id="battleOpMoves">0</b>수</div>
+</div>
+
+<!-- 대결 결과 모달 -->
+<div id="battleResultModal">
+  <div id="battleResultBox">
+    <h2 id="battleResultEmoji">🎉</h2>
+    <h2 id="battleResultTitle" style="margin-top:0;"></h2>
+    <p id="battleResultDesc"></p>
+    <button id="battleResultOkBtn">확인</button>
   </div>
 </div>
 
@@ -588,7 +787,8 @@
     initial: [],
     selected: -1,
     moves: 0,
-    history: []
+    history: [],
+    animating: false
   };
 
   // ===== 튜토리얼 모드 =====
@@ -708,6 +908,7 @@
 
   function tutorialNext(){
     if(!tutorial.active) return;
+    if(state.animating) return;
     if(tutorial.step >= tutorial.solution.length) return;
     const mv = tutorial.solution[tutorial.step];
     if(!canPour(mv.from, mv.to)){
@@ -715,19 +916,13 @@
       if(tutorial.solution.length === 0) { render(); return; }
       return tutorialNext();
     }
-    doPour(mv.from, mv.to, true);
-    state.moves++;
     tutorial.step++;
-    playPourSound();
-    const filledTube = state.tubes[mv.to];
-    const isFilled = filledTube.length === state.capacity && filledTube.every(c => c === filledTube[0]);
-    if(isFilled) setTimeout(playFillSound, 180);
-    render();
-    if(isSolved()) onWin();
+    performPour(mv.from, mv.to);
   }
 
   function tutorialBack(){
     if(!tutorial.active) return;
+    if(state.animating) return;
     if(tutorial.step <= 0) return;
     if(state.history.length === 0) return;
     state.tubes = state.history.pop();
@@ -804,6 +999,104 @@
       state.tubes[dst].push(sc);
     }
     return true;
+  }
+
+  // ===== 붓기 애니메이션 (병 기울임 + 흐르는 방울 + 액체 레벨 변화) =====
+  function tiltDirection(srcEl, dstEl){
+    const sr = srcEl.getBoundingClientRect();
+    const dr = dstEl.getBoundingClientRect();
+    return (dr.left + dr.width/2) >= (sr.left + sr.width/2) ? 1 : -1;
+  }
+
+  function createStreamDrops(srcEl, dstEl, color, duration){
+    const board = document.getElementById('board');
+    const boardRect = board.getBoundingClientRect();
+    const sr = srcEl.getBoundingClientRect();
+    const dr = dstEl.getBoundingClientRect();
+    const sx = sr.left + sr.width/2 - boardRect.left;
+    const sy = sr.top - boardRect.top + 2;
+    const dx = dr.left + dr.width/2 - boardRect.left;
+    const dy = dr.top - boardRect.top + 8;
+    const midX = (sx + dx) / 2;
+    const midY = Math.min(sy, dy) - 46;
+    const pathStr = `M ${sx} ${sy} Q ${midX} ${midY} ${dx} ${dy}`;
+    const dropCount = 4;
+    for(let i=0;i<dropCount;i++){
+      const drop = document.createElement('div');
+      drop.className = 'pour-stream';
+      drop.style.background = color;
+      drop.style.offsetPath = `path('${pathStr}')`;
+      drop.style.animationDuration = duration + 'ms';
+      drop.style.animationDelay = Math.round(i * (duration/dropCount) * 0.55) + 'ms';
+      drop.addEventListener('animationend', () => drop.remove());
+      board.appendChild(drop);
+    }
+  }
+
+  function shrinkSrcUnits(srcEl, amt, stepDelay){
+    const liquids = srcEl.querySelectorAll('.liquid');
+    const n = liquids.length;
+    for(let i=0;i<amt;i++){
+      const liq = liquids[n-1-i];
+      if(!liq) continue;
+      setTimeout(()=>{ liq.style.height = '0%'; }, i*stepDelay);
+    }
+  }
+
+  function growDstUnits(dstEl, color, amt, segH, stepDelay){
+    for(let i=0;i<amt;i++){
+      setTimeout(()=>{
+        const liq = document.createElement('div');
+        liq.className = 'liquid';
+        liq.style.background = color;
+        liq.style.height = '0%';
+        dstEl.appendChild(liq);
+        void liq.offsetHeight; // 강제 리플로우 -> 트랜지션 적용
+        liq.style.height = segH;
+      }, i*stepDelay);
+    }
+  }
+
+  function performPour(src, dst, onDone){
+    if(state.animating) return;
+    const amt = pourAmount(src, dst);
+    if(amt <= 0) return;
+    state.animating = true;
+    const sc = topColor(state.tubes[src]);
+    const srcEl = document.querySelector('.tube[data-idx="'+src+'"]');
+    const dstEl = document.querySelector('.tube[data-idx="'+dst+'"]');
+    const segH = (100/state.capacity).toFixed(2) + '%';
+
+    playPourSound();
+
+    if(srcEl && dstEl){
+      const dir = tiltDirection(srcEl, dstEl);
+      srcEl.style.transition = 'transform .22s ease';
+      srcEl.style.transform = `translateY(-14px) rotate(${dir*14}deg)`;
+
+      const stepDelay = 70;
+      const streamDuration = 260 + (amt-1)*stepDelay;
+      createStreamDrops(srcEl, dstEl, sc, streamDuration);
+      shrinkSrcUnits(srcEl, amt, stepDelay);
+      growDstUnits(dstEl, sc, amt, segH, stepDelay);
+
+      setTimeout(()=>{ srcEl.style.transform = ''; }, streamDuration + 40);
+      setTimeout(()=>{ finalizePour(src, dst, onDone); }, streamDuration + 140);
+    } else {
+      finalizePour(src, dst, onDone);
+    }
+  }
+
+  function finalizePour(src, dst, onDone){
+    doPour(src, dst, true);
+    state.moves++;
+    const filledTube = state.tubes[dst];
+    const isFilled = filledTube.length === state.capacity && filledTube.every(c => c === filledTube[0]);
+    if(isFilled) setTimeout(playFillSound, 150);
+    state.animating = false;
+    render();
+    if(isSolved()) onWin();
+    if(onDone) onDone();
   }
 
   function isSolved(){
@@ -939,6 +1232,7 @@
 
   function onTubeClick(idx){
     if(tutorial.active) return; // 튜토리얼 모드: 클릭 완전 차단
+    if(state.animating) return; // 애니메이션 진행 중에는 클릭 무시
     unlockAudio(); // 모바일: 첫 터치 시 동기 흐름 내에서 AudioContext unlock
     if(state.selected === -1){
       if(state.tubes[idx].length === 0) return;
@@ -952,16 +1246,9 @@
       return;
     }
     if(canPour(state.selected, idx)){
-      doPour(state.selected, idx, true);
-      state.moves++;
-      playPourSound();
-      const filledTube = state.tubes[idx];
-      const isFilled = filledTube.length === state.capacity && filledTube.every(c => c === filledTube[0]);
-      if(isFilled) setTimeout(playFillSound, 180);
+      const src = state.selected;
       state.selected = -1;
-      if(tutorial.active) ensureTutorialSolution(); // 직접 조작한 경우 남은 최적 경로를 다시 계산
-      render();
-      if(isSolved()) onWin();
+      performPour(src, idx);
     } else {
       const el = document.querySelector('.tube[data-idx="'+idx+'"]');
       if(el){
@@ -994,6 +1281,7 @@
   });
 
   document.getElementById('undoBtn').addEventListener('click', () => {
+    if(state.animating) return;
     if(state.history.length === 0) return;
     state.tubes = state.history.pop();
     state.selected = -1;
@@ -1003,6 +1291,7 @@
   });
 
   document.getElementById('resetBtn').addEventListener('click', () => {
+    if(state.animating) return;
     state.tubes = cloneTubes(state.initial);
     state.selected = -1;
     state.moves = 0;
@@ -1012,6 +1301,7 @@
   });
 
   document.getElementById('restartBtn').addEventListener('click', () => {
+    if(state.animating) return;
     newLevel(state.level);
   });
 
@@ -1027,6 +1317,277 @@
   loadProgress();
   loadExtremeMode();
   newLevel(state.level);
+
+  // ===== 실시간 대결 모드 =====
+  const battle = {
+    active: false,
+    roomCode: null,
+    role: null,       // 'host' | 'guest'
+    opponentDone: false,
+    myDone: false,
+    listener: null
+  };
+
+  function setBattleUI(inBattle){
+    battle.active = inBattle;
+    const hudWrap = document.querySelector('.hud-wrap');
+    const board = document.getElementById('board');
+    const battleHud = document.getElementById('battleHud');
+    const battleScreen = document.getElementById('battleScreen');
+    const headerClear = document.querySelector('.header-clear');
+    const extremeToggle = document.querySelector('.extreme-toggle');
+
+    if(inBattle){
+      hudWrap.style.display = 'none';
+      battleScreen.style.display = 'none';
+      battleHud.style.display = 'flex';
+      board.style.display = '';
+      headerClear.style.display = 'none';
+      extremeToggle.style.display = 'none';
+      document.getElementById('battleBtn').textContent = '⚔️ 대결 중';
+      document.getElementById('battleBtn').disabled = true;
+    } else {
+      hudWrap.style.display = '';
+      battleHud.style.display = 'none';
+      board.style.display = '';
+      headerClear.style.display = '';
+      extremeToggle.style.display = '';
+      document.getElementById('battleBtn').textContent = '⚔️ 대결';
+      document.getElementById('battleBtn').disabled = false;
+    }
+  }
+
+  function showBattleScreen(){
+    document.querySelector('.hud-wrap').style.display = 'none';
+    document.getElementById('board').style.display = 'none';
+    document.getElementById('battleHud').style.display = 'none';
+    document.getElementById('battleScreen').style.display = 'flex';
+    document.querySelector('.header-clear').style.display = 'none';
+    document.querySelector('.extreme-toggle').style.display = 'none';
+    document.getElementById('battleBtn').style.display = 'none';
+    resetBattleScreen();
+  }
+
+  function hideBattleScreen(){
+    document.getElementById('battleScreen').style.display = 'none';
+    document.querySelector('.hud-wrap').style.display = '';
+    document.getElementById('board').style.display = '';
+    document.querySelector('.header-clear').style.display = '';
+    document.querySelector('.extreme-toggle').style.display = '';
+    document.getElementById('battleBtn').style.display = '';
+  }
+
+  function resetBattleScreen(){
+    document.getElementById('battleRoomCode').style.display = 'none';
+    document.getElementById('battleStatus').textContent = '';
+    document.getElementById('battleJoinWrap').style.display = 'none';
+    document.getElementById('battleJoinInput').value = '';
+    document.getElementById('battleCreateBtn').style.display = '';
+    document.getElementById('battleJoinBtn').style.display = '';
+  }
+
+  function genRoomCode(){
+    return String(Math.floor(1000 + Math.random() * 9000));
+  }
+
+  function waitForFirebase(cb){
+    if(window._fdb){ cb(); return; }
+    window.addEventListener('firebase-ready', cb, { once: true });
+  }
+
+  function updateBattleHud(){
+    document.getElementById('battleMyMoves').textContent = state.moves;
+  }
+
+  // 방 만들기
+  document.getElementById('battleCreateBtn').addEventListener('click', () => {
+    waitForFirebase(() => {
+      const code = genRoomCode();
+      battle.roomCode = code;
+      battle.role = 'host';
+      const db = window._fdb;
+      const dbRef = window._fref(db, 'rooms/' + code);
+
+      // 방 초기화
+      window._fset(dbRef, {
+        status: 'waiting',
+        hostMoves: 0,
+        guestMoves: 0,
+        hostDone: false,
+        guestDone: false,
+        tubes: null,
+        capacity: null
+      });
+
+      document.getElementById('battleRoomCode').textContent = code;
+      document.getElementById('battleRoomCode').style.display = 'block';
+      document.getElementById('battleStatus').textContent = '친구가 입장하길 기다리는 중...';
+      document.getElementById('battleCreateBtn').style.display = 'none';
+      document.getElementById('battleJoinBtn').style.display = 'none';
+
+      // 게스트 입장 감지
+      const listener = window._fonValue(dbRef, (snap) => {
+        const data = snap.val();
+        if(!data) return;
+        if(data.status === 'ready'){
+          window._foff(dbRef, 'value', listener);
+          // 퍼즐 생성 후 Firebase에 저장
+          const { tubes, capacity } = generatePuzzle(state.level);
+          window._fset(window._fref(db, 'rooms/' + code + '/tubes'), tubes);
+          window._fset(window._fref(db, 'rooms/' + code + '/capacity'), capacity);
+          window._fset(window._fref(db, 'rooms/' + code + '/status'), 'playing');
+          startBattle(code, 'host', tubes, capacity);
+        }
+      });
+    });
+  });
+
+  // 방 번호 입력하기
+  document.getElementById('battleJoinBtn').addEventListener('click', () => {
+    document.getElementById('battleCreateBtn').style.display = 'none';
+    document.getElementById('battleJoinBtn').style.display = 'none';
+    document.getElementById('battleJoinWrap').style.display = 'flex';
+    document.getElementById('battleStatus').textContent = '방 번호를 입력해 주세요';
+  });
+
+  document.getElementById('battleJoinConfirmBtn').addEventListener('click', () => {
+    const code = document.getElementById('battleJoinInput').value.trim();
+    if(code.length !== 4){ document.getElementById('battleStatus').textContent = '4자리 번호를 입력하세요'; return; }
+    waitForFirebase(() => {
+      const db = window._fdb;
+      const dbRef = window._fref(db, 'rooms/' + code);
+      window._fget(dbRef).then(snap => {
+        const data = snap.val();
+        if(!data || data.status !== 'waiting'){
+          document.getElementById('battleStatus').textContent = '방을 찾을 수 없거나 이미 시작된 방입니다';
+          return;
+        }
+        battle.roomCode = code;
+        battle.role = 'guest';
+        document.getElementById('battleStatus').textContent = '연결 중...';
+        // ready 신호 전송
+        window._fset(window._fref(db, 'rooms/' + code + '/status'), 'ready');
+        // 호스트가 퍼즐 올릴 때까지 대기
+        const listener = window._fonValue(dbRef, (snap2) => {
+          const d = snap2.val();
+          if(!d) return;
+          if(d.status === 'playing' && d.tubes && d.capacity){
+            window._foff(dbRef, 'value', listener);
+            startBattle(code, 'guest', d.tubes, d.capacity);
+          }
+        });
+      });
+    });
+  });
+
+  function startBattle(code, role, tubes, capacity){
+    hideBattleScreen();
+    state.tubes = tubes.map(t => t.slice());
+    state.initial = tubes.map(t => t.slice());
+    state.capacity = capacity;
+    state.selected = -1;
+    state.moves = 0;
+    state.history = [];
+    battle.active = true;
+    battle.myDone = false;
+    battle.opponentDone = false;
+    setBattleUI(true);
+    updateBattleHud();
+    render();
+
+    // 상대방 수 실시간 감지
+    const opField = role === 'host' ? 'guestMoves' : 'hostMoves';
+    const opDoneField = role === 'host' ? 'guestDone' : 'hostDone';
+    const db = window._fdb;
+    const dbRef = window._fref(db, 'rooms/' + code);
+    const listener = window._fonValue(dbRef, (snap) => {
+      const d = snap.val();
+      if(!d) return;
+      document.getElementById('battleOpMoves').textContent = d[opField] || 0;
+      if(d[opDoneField] && !battle.opponentDone){
+        battle.opponentDone = true;
+        if(!battle.myDone){
+          // 상대가 먼저 완료 → 내가 짐
+          endBattle(false);
+        }
+      }
+    });
+    battle.listener = () => window._foff(dbRef, 'value', listener);
+  }
+
+  // 기존 onWin에 배틀 훅
+  const _origOnWin = onWin;
+  function onWin(){
+    if(battle.active){
+      battle.myDone = true;
+      const db = window._fdb;
+      const myDoneField = battle.role === 'host' ? 'hostDone' : 'guestDone';
+      window._fset(window._fref(db, 'rooms/' + battle.roomCode + '/' + myDoneField), true);
+      if(!battle.opponentDone){
+        endBattle(true);
+      }
+      return;
+    }
+    if(tutorial.active) return;
+    playClearSound();
+    state.clearCount++;
+    saveProgress();
+    document.getElementById('levelLabel').textContent = state.clearCount;
+    document.getElementById('winText').textContent = state.clearCount + '번째 클리어!';
+    document.getElementById('winModal').style.display = 'flex';
+  }
+
+  // 배틀 수 업데이트 훅 (기존 finalizePour 오버라이드)
+  const _origFinalize = finalizePour;
+  function finalizePour(src, dst, onDone){
+    doPour(src, dst, true);
+    state.moves++;
+    const filledTube = state.tubes[dst];
+    const isFilled = filledTube.length === state.capacity && filledTube.every(c => c === filledTube[0]);
+    if(isFilled) setTimeout(playFillSound, 150);
+    state.animating = false;
+
+    if(battle.active){
+      updateBattleHud();
+      const db = window._fdb;
+      const myMovesField = battle.role === 'host' ? 'hostMoves' : 'guestMoves';
+      window._fset(window._fref(db, 'rooms/' + battle.roomCode + '/' + myMovesField), state.moves);
+    }
+
+    render();
+    if(isSolved()) onWin();
+    if(onDone) onDone();
+  }
+
+  function endBattle(iWin){
+    if(battle.listener) battle.listener();
+    battle.listener = null;
+    playClearSound();
+
+    const emoji = iWin ? '🏆' : '😢';
+    const title = iWin ? '승리!' : '패배...';
+    const desc = iWin
+      ? `먼저 클리어! 내 이동 수: ${state.moves}`
+      : `상대가 먼저 클리어했어요. 내 이동 수: ${state.moves}`;
+
+    document.getElementById('battleResultEmoji').textContent = emoji;
+    document.getElementById('battleResultTitle').textContent = title;
+    document.getElementById('battleResultDesc').textContent = desc;
+    document.getElementById('battleResultModal').style.display = 'flex';
+  }
+
+  document.getElementById('battleResultOkBtn').addEventListener('click', () => {
+    document.getElementById('battleResultModal').style.display = 'none';
+    battle.active = false;
+    battle.roomCode = null;
+    battle.role = null;
+    setBattleUI(false);
+    newLevel(state.level);
+  });
+
+  document.getElementById('battleBtn').addEventListener('click', showBattleScreen);
+  document.getElementById('battleBackBtn').addEventListener('click', hideBattleScreen);
+
 })();
 </script>
 
