@@ -175,7 +175,7 @@
     padding:4px;
     overflow:hidden;
     cursor:pointer;
-    transition:transform .15s;
+    transition:transform .07s;
     transform-origin:bottom center;
   }
   .tube::before{
@@ -206,7 +206,7 @@
     border-radius:3px;
     flex-shrink:0;
     border-top:2px solid rgba(0,0,0,0.28);
-    transition:height .28s cubic-bezier(.4,0,.2,1);
+    transition:height .14s cubic-bezier(.4,0,.2,1);
   }
   .pour-stream{
     position:absolute;
@@ -451,7 +451,12 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:12px;
+    gap:16px;
+  }
+  .battle-hud-controls .icon-btn{
+    width:72px;
+    height:52px;
+    font-size:26px;
   }
   .battle-badge{
     display:flex;
@@ -462,14 +467,15 @@
   }
   .battle-badge b{ color:var(--accent); font-size:16px; }
   #battleExitBtn{
-    font-size:13px;
-    padding:0 14px;
-    height:40px;
+    font-size:14px;
+    padding:0 18px;
+    height:52px;
     color:var(--danger);
     border-color:var(--danger);
   }
   @media (max-width:420px){
-    #battleExitBtn{ height:36px; font-size:12px; padding:0 10px; }
+    .battle-hud-controls .icon-btn{ width:60px; height:46px; font-size:22px; }
+    #battleExitBtn{ height:46px; font-size:13px; padding:0 14px; }
   }
   #battleResultModal{
     position:fixed; inset:0;
@@ -1086,17 +1092,17 @@
 
     if(srcEl && dstEl){
       const dir = tiltDirection(srcEl, dstEl);
-      srcEl.style.transition = 'transform .22s ease';
+      srcEl.style.transition = 'transform .11s ease';
       srcEl.style.transform = `translateY(-14px) rotate(${dir*14}deg)`;
 
-      const stepDelay = 70;
-      const streamDuration = 260 + (amt-1)*stepDelay;
+      const stepDelay = 35;
+      const streamDuration = 130 + (amt-1)*stepDelay;
       createStreamDrops(srcEl, dstEl, sc, streamDuration);
       shrinkSrcUnits(srcEl, amt, stepDelay);
       growDstUnits(dstEl, sc, amt, segH, stepDelay);
 
-      const tiltResetMs = streamDuration + 40;      // 기울기 원복 시작
-      const finalizeMs  = tiltResetMs + 240;         // 220ms 트랜지션 완료 후 20ms 여유
+      const tiltResetMs = streamDuration + 20;
+      const finalizeMs  = tiltResetMs + 130;
 
       setTimeout(()=>{ srcEl.style.transform = ''; }, tiltResetMs);
       setTimeout(()=>{ finalizePour(src, dst, onDone); }, finalizeMs);
@@ -1642,7 +1648,7 @@
     if(onDone) onDone();
   }
 
-  function endBattle(iWin, opponentLeft){
+  function endBattle(iWin, opponentLeft, iQuit){
     battle.matchOver = true;
     if(battle.listener) battle.listener();
     battle.listener = null;
@@ -1653,6 +1659,8 @@
     let desc;
     if(opponentLeft){
       desc = '상대방이 대결을 나갔습니다. 승리!';
+    } else if(iQuit){
+      desc = '대결을 포기했습니다.';
     } else {
       desc = iWin
         ? `먼저 클리어! 내 이동 수: ${state.moves}`
@@ -1717,12 +1725,8 @@
     }
     if(battle.listener) battle.listener();
     battle.listener = null;
-    battle.active = false;
-    battle.roomCode = null;
-    battle.role = null;
-    battle.matchOver = false;
-    setBattleUI(false);
-    newLevel(state.level);
+    // 나간 사람은 패자 모달 표시 후 종료
+    endBattle(false, false, true);
   });
 
   document.getElementById('battleBtn').addEventListener('click', showBattleScreen);
