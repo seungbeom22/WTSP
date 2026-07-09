@@ -109,7 +109,6 @@
     .hud > *{ height:40px; }
     .badge{ padding:0 8px; font-size:12px; gap:4px; }
     .icon-btn{ width:50px; font-size:18px; }
-    #tutorialBtn{ width:50px; font-size:15px; }
     .header-clear{ height:36px; font-size:13px; padding:0 12px; }
   }
   #undoBtn{
@@ -141,7 +140,7 @@
     border-radius:10px;
     font-size:14px;
     cursor:pointer;
-    transition:transform .1s, background .15s;
+    transition:transform .05s, background .08s;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -149,15 +148,7 @@
   button:hover{ background:#26333f; }
   button:active{ transform:scale(0.95); }
   button:disabled{ opacity:0.4; cursor:default; }
-  #tutorialBtn{
-    width:60px;
-    padding:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:18px;
-    flex-shrink:0;
-  }
+
   #board{
     display:flex;
     flex-wrap:wrap;
@@ -366,15 +357,9 @@
 
   /* ===== 실시간 대결 ===== */
   #battleBtn{
-    font-size:13px;
-    padding:0 14px;
-    height:36px;
     background:linear-gradient(135deg,#e63946,#9b5de5);
     border:none;
     color:#fff;
-    font-weight:bold;
-    letter-spacing:1px;
-    flex-shrink:0;
   }
   #battleBtn:hover{ background:linear-gradient(135deg,#c0303c,#7a3fb8); }
 
@@ -441,9 +426,9 @@
   }
   #battleJoinInput::placeholder{ color:#4a5f70; letter-spacing:4px; font-size:16px; }
   #battleBackBtn{
-    font-size:13px;
-    padding:0 20px;
-    height:36px;
+    font-size:15px;
+    padding:0 24px;
+    height:48px;
     color:var(--sub);
   }
 
@@ -500,8 +485,10 @@
     border-radius:20px;
     padding:36px 40px;
     text-align:center;
+    max-width:320px;
   }
   #battleResultBox h2{ margin-top:0; font-size:28px; }
+  #battleResultBox h2#battleResultTitle{ font-size:20px; line-height:1.4; word-break:keep-all; }
   #battleResultBox p{ color:var(--sub); margin:8px 0 20px; }
   #battleResultBox button{ width:100%; height:48px; font-size:15px; }
 </style>
@@ -511,7 +498,6 @@
 <div class="header-row">
   <div class="header-title">💧 워터 소트 퍼즐</div>
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-    <button id="battleBtn">⚔️ 대결</button>
     <label class="extreme-toggle" title="극한 모드">
       <input type="checkbox" id="extremeToggle">
       <span class="extreme-slider"></span>
@@ -572,7 +558,8 @@
     <button id="undoBtn" class="icon-btn" title="한 칸 되돌리기">↩︎</button>
     <button id="resetBtn" class="icon-btn" title="이번 판 초기화">⟲</button>
     <button id="restartBtn" class="icon-btn" title="새 판">🔄</button>
-    <button id="tutorialBtn" title="튜토리얼 모드">🎓</button>
+    <button id="tutorialBtn" class="icon-btn" title="튜토리얼 모드">🎓</button>
+    <button id="battleBtn" class="icon-btn" title="실시간 대결">⚔️</button>
   </div>
 
   <div id="tutorialBar" style="display:none;">
@@ -1378,7 +1365,7 @@
       board.style.display = '';
       headerClear.style.display = 'none';
       extremeToggle.style.display = 'none';
-      document.getElementById('battleBtn').textContent = '⚔️ 대결 중';
+      document.getElementById('battleBtn').title = '대결 중';
       document.getElementById('battleBtn').disabled = true;
     } else {
       hudWrap.style.display = '';
@@ -1386,7 +1373,7 @@
       board.style.display = '';
       headerClear.style.display = '';
       extremeToggle.style.display = '';
-      document.getElementById('battleBtn').textContent = '⚔️ 대결';
+      document.getElementById('battleBtn').title = '실시간 대결';
       document.getElementById('battleBtn').disabled = false;
     }
   }
@@ -1662,7 +1649,7 @@
     playClearSound();
 
     const emoji = iWin ? '🏆' : '😢';
-    const title = iWin ? '승리!' : '패배...';
+    const title = iWin ? '움하하하하하!!!' : '졌습니다~ 선생님~ 납작 기겠습니다~';
     let desc;
     if(opponentLeft){
       desc = '상대방이 대결을 나갔습니다. 승리!';
