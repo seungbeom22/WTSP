@@ -6,7 +6,7 @@
 <title>워터 소트 퍼즐</title>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, set, get, onValue, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getDatabase, ref, set, get, onValue, off, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
   const firebaseConfig = {
     apiKey: "AIzaSyC4Oq-0ixr_LzRci5fdsqiAHqg_31irCXw",
     authDomain: "water-sope.firebaseapp.com",
@@ -24,6 +24,7 @@
   window._fget = get;
   window._fonValue = onValue;
   window._foff = off;
+  window._fonDisconnect = onDisconnect;
   window.dispatchEvent(new Event("firebase-ready"));
 </script>
 <style>
@@ -497,6 +498,52 @@
   #battleResultBox h2#battleResultTitle{ font-size:20px; line-height:1.4; word-break:keep-all; }
   #battleResultBox p{ color:var(--sub); margin:8px 0 20px; }
   #battleResultBox button{ width:100%; height:48px; font-size:15px; }
+
+  /* 대결 나가기 확인 모달 */
+  #battleExitConfirmModal{
+    position:fixed; inset:0;
+    background:rgba(6,10,15,0.85);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:70;
+  }
+  #battleExitConfirmBox{
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:20px;
+    padding:32px 36px;
+    text-align:center;
+    max-width:300px;
+  }
+  #battleExitConfirmBox h3{
+    margin-top:0;
+    color:var(--danger);
+    font-size:18px;
+  }
+  #battleExitConfirmBox p{
+    color:var(--sub);
+    font-size:14px;
+    margin:8px 0 20px;
+    word-break:keep-all;
+    line-height:1.6;
+  }
+  .exit-confirm-btns{
+    display:flex;
+    gap:10px;
+  }
+  .exit-confirm-btns button{
+    flex:1;
+    height:46px;
+    font-size:14px;
+  }
+  #battleExitConfirmYes{
+    background:var(--danger);
+    border-color:var(--danger);
+    color:#fff;
+    font-weight:bold;
+  }
+  #battleExitConfirmYes:hover{ background:#c0303c; }
 </style>
 </head>
 <body>
@@ -548,6 +595,18 @@
     <h2 id="battleResultTitle" style="margin-top:0;"></h2>
     <p id="battleResultDesc"></p>
     <button id="battleResultOkBtn">확인</button>
+  </div>
+</div>
+
+<!-- 대결 나가기 확인 모달 -->
+<div id="battleExitConfirmModal">
+  <div id="battleExitConfirmBox">
+    <h3>🚪 대결 나가기</h3>
+    <p>정말 나가시겠습니까?<br>나가면 상대방이 승리 처리됩니다.</p>
+    <div class="exit-confirm-btns">
+      <button id="battleExitConfirmNo">취소</button>
+      <button id="battleExitConfirmYes">나가기</button>
+    </div>
   </div>
 </div>
 
@@ -1352,7 +1411,9 @@
     myDone: false,
     matchOver: false,
     listener: null,
-    setupListenerOff: null // 방 만들기/입장 대기 중인 리스너 해제 함수
+    setupListenerOff: null, // 방 만들기/입장 대기 중인 리스너 해제 함수
+    unloadHandler: null,    // beforeunload 핸들러
+    disconnectCancel: null  // onDisconnect 취소 함수
   };
 
   function setBattleUI(inBattle){
@@ -1577,11 +1638,28 @@
     updateBattleHud();
     render();
 
+    // ── Firebase onDisconnect: 브라우저 종료/네트워크 끊김 시 자동으로 leftLeft 플래그 세팅
+    const db = window._fdb;
+    const leftField = role === 'host' ? 'hostLeft' : 'guestLeft';
+    const disconnectRef = window._fref(db, 'rooms/' + code + '/' + leftField);
+    const dcHandler = window._fonDisconnect(disconnectRef);
+    dcHandler.set(true);
+    battle.disconnectCancel = () => { try{ dcHandler.cancel(); }catch(e){} };
+
+    // ── beforeunload: 탭 닫기 / 새로고침 / 주소창 이탈 시 left 플래그를 동기 방식으로 전송
+    const handleUnload = () => {
+      if(!battle.active || battle.matchOver) return;
+      // sendBeacon으로 REST API 호출 (Firebase onDisconnect가 늦을 때 보조 보장)
+      const url = `https://water-sope-default-rtdb.firebaseio.com/rooms/${code}/${leftField}.json`;
+      try{ navigator.sendBeacon(url, JSON.stringify(true)); }catch(e){}
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    battle.unloadHandler = handleUnload;
+
     // 상대방 수 실시간 감지
     const opField = role === 'host' ? 'guestMoves' : 'hostMoves';
     const opDoneField = role === 'host' ? 'guestDone' : 'hostDone';
     const opLeftField = role === 'host' ? 'guestLeft' : 'hostLeft';
-    const db = window._fdb;
     const dbRef = window._fref(db, 'rooms/' + code);
     const listener = window._fonValue(dbRef, (snap) => {
       const d = snap.val();
@@ -1652,13 +1730,23 @@
     battle.matchOver = true;
     if(battle.listener) battle.listener();
     battle.listener = null;
+    // beforeunload 리스너 제거
+    if(battle.unloadHandler){
+      window.removeEventListener('beforeunload', battle.unloadHandler);
+      battle.unloadHandler = null;
+    }
+    // onDisconnect 취소 (정상 종료이므로 자동 left 세팅 불필요)
+    if(battle.disconnectCancel){
+      battle.disconnectCancel();
+      battle.disconnectCancel = null;
+    }
     playClearSound();
 
     const emoji = iWin ? '🏆' : '😢';
     const title = iWin ? '움하하하하하!!!' : '졌습니다~ 선생님~ 납작 기겠습니다~';
     let desc;
     if(opponentLeft){
-      desc = '상대방이 대결을 나갔습니다. 승리!';
+      desc = '상대방이 방을 퇴장하여, 자동 승리 처리되었습니다.';
     } else if(iQuit){
       desc = '대결을 포기했습니다.';
     } else {
@@ -1679,6 +1767,8 @@
     battle.roomCode = null;
     battle.role = null;
     battle.matchOver = false;
+    battle.unloadHandler = null;
+    battle.disconnectCancel = null;
     setBattleUI(false);
     newLevel(state.level);
   });
@@ -1716,8 +1806,31 @@
 
   document.getElementById('battleExitBtn').addEventListener('click', () => {
     if(!battle.active || battle.matchOver) return;
-    if(!confirm('정말 대결을 나가시겠습니까? 나가면 상대방이 승리 처리됩니다.')) return;
+    document.getElementById('battleExitConfirmModal').style.display = 'flex';
+  });
+
+  document.getElementById('battleExitConfirmNo').addEventListener('click', () => {
+    document.getElementById('battleExitConfirmModal').style.display = 'none';
+  });
+
+  document.getElementById('battleExitConfirmYes').addEventListener('click', () => {
+    document.getElementById('battleExitConfirmModal').style.display = 'none';
+    if(!battle.active || battle.matchOver) return;
+    doExitBattle();
+  });
+
+  function doExitBattle(){
     battle.matchOver = true;
+    // beforeunload 리스너 제거 (이미 직접 처리하므로)
+    if(battle.unloadHandler){
+      window.removeEventListener('beforeunload', battle.unloadHandler);
+      battle.unloadHandler = null;
+    }
+    // onDisconnect 취소 (직접 left 세팅할 것이므로)
+    if(battle.disconnectCancel){
+      battle.disconnectCancel();
+      battle.disconnectCancel = null;
+    }
     if(battle.roomCode && window._fdb){
       const db = window._fdb;
       const leftField = battle.role === 'host' ? 'hostLeft' : 'guestLeft';
@@ -1725,9 +1838,8 @@
     }
     if(battle.listener) battle.listener();
     battle.listener = null;
-    // 나간 사람은 패자 모달 표시 후 종료
     endBattle(false, false, true);
-  });
+  }
 
   document.getElementById('battleBtn').addEventListener('click', showBattleScreen);
   document.getElementById('battleBackBtn').addEventListener('click', () => {
